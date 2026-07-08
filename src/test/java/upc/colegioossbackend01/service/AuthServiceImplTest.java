@@ -29,7 +29,6 @@ import upc.colegioossbackend01.dto.request.ForgotPasswordRequest;
 import upc.colegioossbackend01.dto.request.ResetPasswordRequest;
 import upc.colegioossbackend01.entity.PasswordResetToken;
 import upc.colegioossbackend01.repository.PasswordResetTokenRepository;
-import upc.colegioossbackend01.service.EmailService;
 
 import java.time.LocalDateTime;
 
@@ -93,7 +92,7 @@ class AuthServiceImplTest {
     void login_deberiaRetornarAuthResponse_cuandoCredencialesValidas() {
         LoginRequest request = LoginRequest.builder().username("juan").password("123456").build();
 
-        when(usuarioRepository.findByUsername("juan")).thenReturn(Optional.of(usuarioActivo));
+        when(usuarioRepository.findByUsernameWithRolYPermisos("juan")).thenReturn(Optional.of(usuarioActivo));
         when(jwtService.generateAccessToken(usuarioActivo)).thenReturn("access-token");
         when(jwtService.generateRefreshToken(usuarioActivo)).thenReturn("refresh-token");
         when(usuarioMapper.toAuthResponse(usuarioActivo, "access-token", "refresh-token"))
@@ -123,8 +122,7 @@ class AuthServiceImplTest {
     void login_deberiaLanzarResourceNotFound_cuandoUsuarioNoExisteDespuesDeAutenticar() {
         LoginRequest request = LoginRequest.builder().username("fantasma").password("123456").build();
 
-        when(usuarioRepository.findByUsername("fantasma")).thenReturn(Optional.empty());
-
+        when(usuarioRepository.findByUsernameWithRolYPermisos("fantasma")).thenReturn(Optional.empty());
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
@@ -138,7 +136,7 @@ class AuthServiceImplTest {
         when(jwtService.extractTokenType("valid-refresh")).thenReturn("refresh");
         when(jwtService.isTokenExpired("valid-refresh")).thenReturn(false);
         when(jwtService.extractUsername("valid-refresh")).thenReturn("juan");
-        when(usuarioRepository.findByUsername("juan")).thenReturn(Optional.of(usuarioActivo));
+        when(usuarioRepository.findByUsernameWithRolYPermisos("juan")).thenReturn(Optional.of(usuarioActivo));
         when(jwtService.generateAccessToken(usuarioActivo)).thenReturn("nuevo-access-token");
         when(usuarioMapper.toAuthResponse(usuarioActivo, "nuevo-access-token", "valid-refresh"))
                 .thenReturn(AuthResponse.builder().token("nuevo-access-token").refreshToken("valid-refresh").build());

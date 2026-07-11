@@ -37,7 +37,8 @@ public class AuthenticationConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         return username -> {
-            Usuario usuario = usuarioRepository.findByUsernameWithRolYPermisos(username)                    .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
+            Usuario usuario = usuarioRepository.findByUsernameWithRolYPermisos(username)
+                    .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado: " + username));
 
             List<GrantedAuthority> authorities;
             if (usuario.getRol() != null) {

@@ -8,6 +8,15 @@ VALUES
     ('USUARIO_ELIMINAR', 'Permite eliminar usuarios', true, now(), 'system'),
     ('USUARIO_VER', 'Permite ver usuarios', true, now(), 'system')
     ON CONFLICT (codigo) DO NOTHING;
+-- ==============================
+-- Permisos de Matrícula
+-- ==============================
+INSERT INTO permiso (codigo, descripcion, activo, fecha_creacion, usuario_crea)
+VALUES
+    ('MATRICULAR', 'Permite registrar matrículas nuevas', true, now(), 'system'),
+    ('MATRICULA_VER', 'Permite consultar matrículas, estudiantes y apoderados', true, now(), 'system'),
+    ('MATRICULA_EDITAR', 'Permite editar matrícula, estudiante o apoderado existente', true, now(), 'system')
+    ON CONFLICT (codigo) DO NOTHING;
 
 -- ==============================
 -- Roles base
@@ -17,6 +26,13 @@ VALUES
     ('ADMIN', 'Administrador del sistema', true, now(), 'system'),
     ('DOCENTE', 'Docente del colegio', true, now(), 'system'),
     ('ALUMNO', 'Alumno del colegio', true, now(), 'system')
+    ON CONFLICT (nombre) DO NOTHING;
+-- ==============================
+-- Rol ADMINISTRATIVO
+-- ==============================
+INSERT INTO rol (nombre, descripcion, activo, fecha_creacion, usuario_crea)
+VALUES
+    ('ADMINISTRATIVO', 'Personal administrativo con permisos de matrícula', true, now(), 'system')
     ON CONFLICT (nombre) DO NOTHING;
 
 -- ==============================
@@ -57,3 +73,13 @@ SELECT 'admin', 'admin@colegio.edu.pe', '$2b$10$Km/v8ZcTvdslEALHK2qpYOAzuN716B4X
 FROM rol r
 WHERE r.nombre = 'ADMIN'
     ON CONFLICT (username) DO NOTHING;
+
+-- ==============================
+-- Asignación de permisos al rol ADMINISTRATIVO
+-- ==============================
+INSERT INTO rol_permiso (rol_id, permiso_id)
+SELECT r.id, p.id
+FROM rol r, permiso p
+WHERE r.nombre = 'ADMINISTRATIVO'
+  AND p.codigo IN ('MATRICULAR', 'MATRICULA_VER', 'MATRICULA_EDITAR')
+    ON CONFLICT DO NOTHING;

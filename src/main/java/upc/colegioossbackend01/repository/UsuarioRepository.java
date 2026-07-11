@@ -4,7 +4,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import upc.colegioossbackend01.entity.Usuario;
+import upc.colegioossbackend01.enums.EstadoUsuario;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
@@ -19,4 +21,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     @Query("SELECT u FROM Usuario u LEFT JOIN FETCH u.rol r LEFT JOIN FETCH r.permisos WHERE u.username = :username")
     Optional<Usuario> findByUsernameWithRolYPermisos(@Param("username") String username);
+
+    List<Usuario> findByEstado(EstadoUsuario estado);
 }

@@ -1,214 +1,233 @@
 # ColegioOSSBackend01
 
-Backend del sistema de gestión del colegio — módulo de autenticación, autorización y gestión de roles/permisos.
+Backend del sistema de gestión del colegio. Este documento explica qué hace el proyecto, cómo levantarlo en tu máquina, y en qué estado está cada funcionalidad — pensado para que cualquiera del equipo (o alguien nuevo que se sume) pueda entenderlo sin depender de que se lo expliquen en persona.
+
+## ¿Qué es este proyecto?
+
+Un backend en Spring Boot para un sistema escolar, con 4 módulos:
+
+1. **Autenticación** — login, recuperación de contraseña, roles y permisos
+2. **Matrícula** — registro de estudiantes, apoderados y matrículas
+3. **Notas** — registro de calificaciones y promedios (próximamente)
+4. **Asistencia** — control de asistencia diaria y reportes (próximamente)
 
 ## Stack tecnológico
 
-- **Java 26**
+- **Java 21**
 - **Spring Boot 4.1.0**
 - **Maven**
 - **PostgreSQL**
-- **Spring Security + JWT** (autenticación stateless)
-- **Swagger / OpenAPI** (documentación de la API)
-- **Lombok**
-- **Spring Mail** (Gmail SMTP, para recuperación de contraseña)
+- **Spring Security + JWT** (autenticación sin sesiones, con tokens)
+- **Swagger / OpenAPI** (documentación interactiva de la API)
+- **Lombok** (menos código repetitivo)
+- **Spring Mail** (envío de correos vía Gmail)
+- **springboot4-dotenv** (variables de entorno locales desde un archivo `.env`)
 
 ## Dependencias principales
 
-| Dependencia | Uso |
+| Dependencia | Para qué sirve |
 |---|---|
-| `spring-boot-starter-data-jpa` | Persistencia con JPA/Hibernate |
-| `spring-boot-starter-webmvc` | API REST (equivalente a `spring-boot-starter-web` en versiones anteriores) |
-| `spring-boot-starter-security` | Autenticación y autorización |
-| `spring-boot-starter-validation` | Validaciones con Bean Validation (`@NotBlank`, `@Email`, etc.) |
-| `spring-boot-starter-mail` | Envío de correos (recuperación de contraseña) |
-| `spring-boot-devtools` | Recarga automática en desarrollo |
-| `postgresql` | Driver JDBC de PostgreSQL |
-| `lombok` | Reduce boilerplate (getters/setters/builders) |
-| `io.jsonwebtoken:jjwt-api` / `jjwt-impl` / `jjwt-jackson` | Generación y validación de JWT |
-| `org.springdoc:springdoc-openapi-starter-webmvc-ui` | Documentación Swagger/OpenAPI |
-| `spring-boot-starter-webmvc-test` | Testing (JUnit, Mockito, MockMvc) |
-| `h2` (scope test) | Base de datos en memoria para pruebas de integración |
+| `spring-boot-starter-data-jpa` | Conectar y trabajar con la base de datos |
+| `spring-boot-starter-webmvc` | Exponer la API REST |
+| `spring-boot-starter-security` | Login y control de acceso |
+| `spring-boot-starter-validation` | Validar los datos que llegan en cada request |
+| `spring-boot-starter-mail` | Enviar correos (recuperación de contraseña) |
+| `postgresql` | Conectarse a PostgreSQL |
+| `lombok` | Generar getters/setters/builders automáticamente |
+| `io.jsonwebtoken:jjwt-*` | Crear y validar los tokens JWT |
+| `org.springdoc:springdoc-openapi-starter-webmvc-ui` | Generar la documentación Swagger |
+| `me.paulschwarz:springboot4-dotenv` | Leer el archivo `.env` automáticamente |
+| `h2` (solo pruebas) | Base de datos en memoria para los tests |
 
-Todas las versiones están gestionadas por el `spring-boot-starter-parent` (BOM), excepto `jjwt-*` y `springdoc-openapi`, que requieren versión explícita en el `pom.xml`.
+## Antes de empezar, necesitas tener instalado
 
-## Requisitos previos
+- **JDK 21**
+- **Maven**
+- **PostgreSQL** (local, o acceso a una base remota)
+- **Cuenta de Gmail** con verificación en 2 pasos, solo si vas a probar el envío de correos
 
-Antes de levantar el proyecto, asegúrate de tener instalado:
+## Cómo configurar tus variables de entorno
 
-- **JDK 26**
-- **Maven** (o usar el wrapper incluido, si aplica)
-- **PostgreSQL** corriendo localmente (o acceso a una instancia remota, ej. Railway)
-- **Cuenta de Gmail** con verificación en 2 pasos activada, si vas a probar el flujo de recuperación de contraseña (ver sección [Configurar Gmail](#configurar-gmail-opcional))
+El proyecto usa 3 archivos para separar qué es público y qué es secreto:
 
-## Configuración inicial
-
-### 1. Crear la base de datos
-
-Crea una base de datos PostgreSQL **vacía** (sin tablas):
-
-```sql
-CREATE DATABASE colegio_oss_db;
-```
-
-No necesitas crear tablas manualmente — Hibernate las genera automáticamente al levantar el proyecto (`spring.jpa.hibernate.ddl-auto=update`), y el archivo `data.sql` inserta los datos base (roles, permisos, usuario administrador).
-
-### 2. Configurar variables de entorno (o editar `application.properties` directamente)
-
-El proyecto usa variables de entorno con valores por defecto para desarrollo local. Puedes definirlas como variables de entorno de tu sistema/IDE, o simplemente editar los valores por defecto directamente en `src/main/resources/application.properties`.
-
-| Variable | Descripción | Valor por defecto (local) |
+| Archivo | ¿Se sube a Git? | Para qué |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | URL JDBC de PostgreSQL | `jdbc:postgresql://localhost:5432/colegio_oss_db` |
+| `application.properties` | Sí | La plantilla de configuración, sin contraseñas reales |
+| `.env` | **No** (está en `.gitignore`) | Tus contraseñas y claves reales, solo en tu máquina |
+| `.env.example` | Sí | Un ejemplo de `.env` para que sepas qué variables necesitas llenar |
+
+En Railway (donde está desplegado el backend), estas variables se configuran directamente en el panel del proyecto, no se usa el archivo `.env` ahí.
+
+### Variables que necesitas configurar
+
+| Variable | Para qué es | Valor de ejemplo (desarrollo) |
+|---|---|---|
+| `SPRING_DATASOURCE_URL` | Conexión a tu base de datos | `jdbc:postgresql://localhost:5432/colegio_oss_db` |
 | `SPRING_DATASOURCE_USERNAME` | Usuario de PostgreSQL | `postgres` |
-| `SPRING_DATASOURCE_PASSWORD` | Contraseña de PostgreSQL | `postgres` |
-| `JWT_SECRET` | Secreto para firmar los JWT (mínimo 256 bits) | placeholder de desarrollo, **cambiar en producción** |
-| `MAIL_USERNAME` | Correo Gmail remitente | *(requerido para probar recuperación de contraseña)* |
-| `MAIL_PASSWORD` | Contraseña de aplicación de Gmail (no la contraseña normal) | *(requerido para probar recuperación de contraseña)* |
-| `FRONTEND_RESET_URL` | URL del frontend donde se arma el enlace de recuperación | `http://localhost:3000/reset-password` |
-| `PORT` | Puerto del servidor | `8080` |
+| `SPRING_DATASOURCE_PASSWORD` | Contraseña de PostgreSQL | (la tuya) |
+| `JWT_SECRET` | Clave secreta para firmar los tokens | genera una con `openssl rand -base64 64` |
+| `JWT_ACCESS_EXPIRATION_MS` | Cuánto dura el token de acceso | `300000` (5 minutos) |
+| `JWT_REFRESH_EXPIRATION_MS` | Cuánto dura el token de refresco | `604800000` (7 días) |
+| `MAIL_HOST` | Servidor de correo | `smtp.gmail.com` |
+| `MAIL_PORT` | Puerto del servidor de correo | `587` |
+| `MAIL_USERNAME` | Tu correo de Gmail | (el tuyo) |
+| `MAIL_PASSWORD` | Contraseña de aplicación de Gmail (no la normal) | (la generas en tu cuenta Google) |
+| `FRONTEND_RESET_URL` | A dónde apunta el enlace de recuperar contraseña | `http://localhost:3000/reset-password` |
+| `CORS_ALLOWED_ORIGINS` | Qué frontend(s) pueden llamar a esta API | `http://localhost:4200` |
+| `SWAGGER_ENABLED` | Si Swagger está visible o no | `true` en desarrollo, `false` en producción |
+| `PORT` | Puerto donde corre el servidor | `8080` |
 
-### 3. Configurar Gmail (opcional)
+### Cómo generar la contraseña de Gmail
 
-Solo necesario si vas a probar el flujo de recuperación de contraseña (envío real de correos):
+1. Activa la verificación en 2 pasos: [myaccount.google.com/security](https://myaccount.google.com/security)
+2. Genera una contraseña de aplicación: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+3. Usa esos 16 caracteres (sin espacios) como `MAIL_PASSWORD`
 
-1. Activa la verificación en 2 pasos en tu cuenta de Gmail: [https://myaccount.google.com/security](https://myaccount.google.com/security)
-2. Genera una contraseña de aplicación: [https://myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-3. Usa esa contraseña de 16 caracteres (sin espacios) como `MAIL_PASSWORD`
+Si no configuras el correo, el resto del sistema sigue funcionando normal — solo el envío de emails fallará en silencio (queda anotado en el log, pero no rompe nada para el usuario).
 
-Si no configuras esto, el resto del proyecto funciona con normalidad — solo el envío de correos fallará silenciosamente (queda registrado en el log, no interrumpe el flujo del usuario).
+## Cómo levantar el proyecto
 
-## Cómo ejecutar el proyecto
+**Desde IntelliJ:** ejecuta `ColegioOssBackend01Application`.
 
-**Desde IntelliJ IDEA:** ejecuta la clase `ColegioOssBackend01Application`.
-
-**Desde terminal (Maven):**
+**Desde la terminal:**
 ```bash
 mvn spring-boot:run
 ```
 
-Al arrancar, Hibernate crea las tablas y el `data.sql` inserta los datos base automáticamente. La aplicación queda disponible en `http://localhost:8080`.
+La primera vez, crea tú mismo la base de datos vacía (`CREATE DATABASE colegio_oss_db;`) — el resto (tablas y datos base) se genera automáticamente al arrancar.
 
-## Datos iniciales (`data.sql`)
+## Usuario de prueba ya incluido
 
-Al levantar el proyecto por primera vez, `src/main/resources/data.sql` inserta automáticamente:
+```
+usuario: admin
+contraseña: Admin123!
+```
 
-**Permisos:**
-- `USUARIO_CREAR`, `USUARIO_EDITAR`, `USUARIO_ELIMINAR`, `USUARIO_VER`
+## Qué datos vienen precargados
 
-**Roles y sus permisos:**
-| Rol | Permisos asignados |
+**Permisos:** `USUARIO_CREAR`, `USUARIO_EDITAR`, `USUARIO_ELIMINAR`, `USUARIO_VER`, `MATRICULAR`, `MATRICULA_VER`, `MATRICULA_EDITAR`
+
+**Roles:**
+| Rol | Qué puede hacer |
 |---|---|
-| `ADMIN` | Todos |
-| `DOCENTE` | `USUARIO_VER`, `USUARIO_EDITAR` |
-| `ALUMNO` | `USUARIO_VER` |
+| `ADMIN` | Todo (automáticamente incluye cualquier permiso nuevo que se agregue) |
+| `DOCENTE` | Ver y editar usuarios |
+| `ALUMNO` | Solo ver usuarios |
+| `ADMINISTRATIVO` | Matricular estudiantes y gestionar datos de matrícula |
 
-**Usuario administrador semilla:**
-| Campo | Valor |
-|---|---|
-| `username` | `admin` |
-| `email` | `admin@colegio.edu.pe` |
-| `password` | `Admin123!` |
-| `nombreCompleto` | Administrador del Sistema |
-| `estado` | `ACTIVO` |
-| `rol` | `ADMIN` |
-
-El script es **idempotente**: usa `ON CONFLICT DO NOTHING`, por lo que se puede ejecutar múltiples veces (por ejemplo, en cada arranque de la aplicación) sin duplicar datos ni lanzar errores. Si necesitas agregar más datos semilla (otros roles, permisos, usuarios de prueba), edita este archivo siguiendo el mismo patrón.
-
-## Documentación de la API (Swagger)
-
-Con el proyecto corriendo, accede a:
+## Documentación interactiva (Swagger)
 
 ```
 http://localhost:8080/swagger-ui/index.html
 ```
 
-Para probar endpoints protegidos: haz login (`POST /api/auth/login`), copia el `token` de la respuesta, haz clic en **"Authorize"** en la parte superior de Swagger, pega el token (sin necesidad de escribir "Bearer ", se agrega automáticamente) y confirma.
+Para probar endpoints que requieren estar logueado: haz login, copia el `token`, dale click a **"Authorize"** arriba a la derecha, pégalo (no hace falta escribir "Bearer ", se agrega solo).
 
-## Endpoints — referencia rápida
+## Endpoints disponibles
 
-| Método | Ruta | Acceso | Descripción |
-|---|---|---|---|
-| POST | `/api/auth/login` | Público | Inicio de sesión |
-| POST | `/api/auth/refresh` | Público | Renovar access token |
-| POST | `/api/auth/register` | Público | Registro (ALUMNO/DOCENTE) |
-| POST | `/api/auth/forgot-password` | Público | Solicitar recuperación de contraseña |
-| POST | `/api/auth/reset-password` | Público | Restablecer contraseña con token |
-| POST | `/api/permisos` | ADMIN | Crear permiso |
-| GET | `/api/permisos` | ADMIN | Listar permisos (`?incluirInactivos=true` opcional) |
-| GET | `/api/permisos/{id}` | ADMIN | Obtener permiso por ID |
-| PUT | `/api/permisos/{id}` | ADMIN | Actualizar descripción |
-| PATCH | `/api/permisos/{id}/desactivar` | ADMIN | Desactivar permiso |
-| PATCH | `/api/permisos/{id}/activar` | ADMIN | Activar permiso |
-| POST | `/api/roles` | ADMIN | Crear rol |
-| GET | `/api/roles` | ADMIN | Listar roles (`?incluirInactivos=true` opcional) |
-| GET | `/api/roles/{id}` | ADMIN | Obtener rol por ID (incluye sus permisos) |
-| PUT | `/api/roles/{id}` | ADMIN | Actualizar descripción |
-| PATCH | `/api/roles/{id}/desactivar` | ADMIN | Desactivar rol |
-| PATCH | `/api/roles/{id}/activar` | ADMIN | Activar rol |
-| PUT | `/api/roles/{id}/permisos` | ADMIN | Asignar/reemplazar permisos del rol |
-
-## Reglas de negocio importantes
-
-- **Registro de usuarios**: el endpoint público `/api/auth/register` solo permite solicitar rol `ALUMNO` (activación inmediata) o `DOCENTE` (queda en estado `PENDIENTE`, sin rol asignado, hasta que un administrador lo apruebe). **Nunca** se puede solicitar `ADMIN` desde el registro público — esto es intencional, para evitar que cualquiera se autoasigne privilegios de administrador.
-- **Soft delete**: ninguna entidad (`Usuario`, `Rol`, `Permiso`) se elimina físicamente de la base de datos. En su lugar, se usan campos de estado (`estado` en `Usuario`, `activo` en `Rol` y `Permiso`) para activar/desactivar.
-- **Inmutabilidad de identificadores**: el `codigo` de un `Permiso` y el `nombre` de un `Rol` no pueden modificarse una vez creados — solo su descripción.
-- **Asignación de permisos a roles**: el endpoint `PUT /api/roles/{id}/permisos` reemplaza el conjunto completo de permisos del rol con la lista enviada (no es un "agregar" o "quitar" incremental). Solo se pueden asignar permisos que estén `activo = true`.
-
-## Historias de Usuario — estado y avance
-
-### HU-01 — Login
-> Como usuario del sistema, quiero iniciar sesión con mi usuario y contraseña, para acceder a las funcionalidades según mi rol.
-
-**Estado: ✅ Completa**
-
-- Login con JWT (access token 5 min + refresh token 7 días)
-- Renovación de access token vía refresh token (`POST /api/auth/refresh`)
-- Registro público de usuarios (`POST /api/auth/register`): rol `ALUMNO` se activa de inmediato, rol `DOCENTE` queda `PENDIENTE` de aprobación
-- Seguridad: contraseñas hasheadas con BCrypt, rutas protegidas con Spring Security, manejo centralizado de errores (`GlobalExceptionHandler`)
-- Documentación Swagger con esquema Bearer
-- Pruebas unitarias del `AuthServiceImpl` (login, refresh, register)
-
-### HU-02 — Recuperación de contraseña
-> Como usuario, quiero recuperar mi contraseña en caso de olvido, para no perder el acceso al sistema.
-
-**Estado: ✅ Completa**
-
-- `POST /api/auth/forgot-password`: genera un token de recuperación (UUID, expira en 30 min, uso único) y envía un enlace por correo (Gmail SMTP)
-- `POST /api/auth/reset-password`: valida el token (existe, no expirado, no usado) y actualiza la contraseña
-- Por seguridad, `forgot-password` responde con el mismo mensaje genérico exista o no el correo en el sistema (no revela qué emails están registrados)
-- Pruebas unitarias de `forgotPassword` y `resetPassword`
-
-### HU-03 — Gestión de roles y permisos
-> Como administrador, quiero gestionar los roles y permisos de los usuarios, para controlar el acceso a la información.
-
-**Estado: 🔶 En progreso** — se dividió en 7 puntos, implementados de forma incremental:
-
-| # | Funcionalidad | Estado |
+### Autenticación — no requiere estar logueado
+| Método | Ruta | Qué hace |
 |---|---|---|
-| 1 | CRUD de Permisos (`/api/permisos`) | ✅ Completo |
-| 2 | CRUD de Roles (`/api/roles`) | ✅ Completo |
-| 3 | Asignar/quitar permisos a un rol (`PUT /api/roles/{id}/permisos`) | ✅ Completo |
-| 4 | Listar usuarios (con filtros por estado/rol) | ⏳ Pendiente |
-| 5 | Aprobar usuarios `PENDIENTE` (asignar rol y activar) | ⏳ Pendiente |
+| POST | `/api/auth/login` | Iniciar sesión |
+| POST | `/api/auth/refresh` | Renovar el token cuando expira |
+| POST | `/api/auth/register` | Registrarse (alumno se activa al toque, docente queda esperando aprobación) |
+| POST | `/api/auth/forgot-password` | Pedir recuperar contraseña |
+| POST | `/api/auth/reset-password` | Cambiar la contraseña con el enlace recibido |
+
+### Permisos y Roles — solo ADMIN
+- `/api/permisos` y `/api/roles`: crear, listar, editar, activar/desactivar (nunca se borran físicamente)
+- `PUT /api/roles/{id}/permisos`: definir qué permisos tiene un rol
+
+### Usuarios — solo ADMIN
+| Método | Ruta | Qué hace |
+|---|---|---|
+| GET | `/api/usuarios/pendientes` | Ver quién está esperando aprobación (ej. docentes recién registrados) |
+| PATCH | `/api/usuarios/{id}/aprobar` | Asignarle un rol y activar su cuenta |
+
+### Estudiantes y Apoderados — para ADMIN y ADMINISTRATIVO
+- `/api/estudiantes` y `/api/apoderados`: crear, listar, buscar por documento, editar, activar/desactivar
+- `/api/estudiantes/{id}/apoderados`: asignar o quitar apoderados de un estudiante
+
+### Matrícula
+| Método | Ruta | Qué hace |
+|---|---|---|
+| POST | `/api/matriculas` | Matricular a un estudiante (nuevo o existente) junto con sus apoderados, todo en un solo paso |
+
+*(Consultar y editar una matrícula ya existente todavía no está implementado — ver la lista de pendientes más abajo)*
+
+## Todas las Historias de Usuario del proyecto
+
+El proyecto completo tiene 12 historias de usuario, repartidas en 4 módulos y 4 personas del equipo. Esta tabla es el mapa general — de acá se desprende todo lo demás.
+
+### Módulo: Autenticación y accesos — *Camarena De La Cruz, Stefano Paolo*
+
+| HU | Descripción | Prioridad | Estado |
+|---|---|---|---|
+| HU-01 | Iniciar sesión con usuario y contraseña | Alta | ✅ Completa |
+| HU-02 | Recuperar contraseña en caso de olvido | Media | ✅ Completa |
+| HU-03 | Gestionar roles y permisos de los usuarios | Alta | 🔶 En progreso (ver detalle abajo) |
+
+### Módulo: Matrícula — *Cruz Rios, Ericson Daniel*
+
+| HU | Descripción | Prioridad | Estado |
+|---|---|---|---|
+| HU-04 | Registrar la matrícula de un nuevo estudiante | Alta | ✅ Completa |
+| HU-05 | Registrar los datos del apoderado del estudiante | Media | ✅ Completa |
+| HU-06 | Consultar y editar la información de matrícula | Media | ⏳ Pendiente |
+
+### Módulo: Notas — *Rojas Utani, Hernan*
+
+| HU | Descripción | Prioridad | Estado |
+|---|---|---|---|
+| HU-07 | Registrar notas de estudiantes por curso y periodo | Alta | ⏳ No iniciado |
+| HU-08 | Calcular automáticamente el promedio del estudiante | Alta | ⏳ No iniciado |
+| HU-09 | Consultar notas como padre de familia | Media | ⏳ No iniciado |
+
+### Módulo: Asistencia — *Soto Vargas, Giampierre*
+
+| HU | Descripción | Prioridad | Estado |
+|---|---|---|---|
+| HU-10 | Registrar asistencia diaria de los estudiantes | Alta | ⏳ No iniciado |
+| HU-11 | Generar reportes de inasistencias | Media | ⏳ No iniciado |
+| HU-12 | Consultar asistencia como padre de familia | Baja | ⏳ No iniciado |
+
+### Detalle de HU-03 (la única parcialmente terminada)
+
+| # | Qué falta | Estado |
+|---|---|---|
+| 1 | CRUD de Permisos | ✅ |
+| 2 | CRUD de Roles | ✅ |
+| 3 | Asignar/quitar permisos a un rol | ✅ |
+| 4 | Listar usuarios con filtros generales | ⏳ Pendiente |
+| 5 | Aprobar usuarios pendientes (asignar rol y activar) | ✅ |
 | 6 | Cambiar el rol de un usuario ya activo | ⏳ Pendiente |
 | 7 | Activar/desactivar/bloquear usuarios | ⏳ Pendiente |
 
-Los puntos 1-3 incluyen: soft delete (activar/desactivar en vez de eliminar), inmutabilidad de `codigo`/`nombre`, protección con `@PreAuthorize("hasRole('ADMIN')")`, y solo permite asignar permisos activos a un rol.
+## Reglas de negocio que hay que tener presentes
 
-Sin los puntos 4-5, los usuarios que se registran como `DOCENTE` quedan indefinidamente en estado `PENDIENTE`, sin forma de ser aprobados desde la API todavía.
+- **Nadie puede autoasignarse el rol ADMIN** — ni al registrarse, ni cuando un admin aprueba a alguien pendiente. Es intencional, por seguridad.
+- **Nada se borra de verdad** — usuarios, roles, permisos, estudiantes y apoderados solo se "desactivan", nunca se eliminan de la base de datos.
+- **El código de un permiso y el nombre de un rol no se pueden cambiar** una vez creados (evita romper referencias). Los datos de estudiantes y apoderados sí son editables.
+- **Un estudiante no puede tener 2 matrículas activas en el mismo periodo** — si lo intentas, el sistema lo rechaza.
+- **Matricular exige al menos un apoderado** — no se puede dejar sin registrar.
+- **Si un apoderado ya estaba vinculado a un estudiante de una matrícula anterior**, el sistema lo reutiliza automáticamente sin duplicar ni dar error.
+- **Los pagos (matrícula y pensiones) no están en este alcance todavía** — la idea a futuro es que se generen solos y queden "pendientes de pago", sin que alguien tenga que crearlos uno por uno a mano.
 
-## Pendiente de definir
+## Cosas técnicas que vale la pena saber
 
-- Qué debe pasar si se desactiva un `Permiso` que ya está asignado a uno o más `Rol` — actualmente no se bloquea la desactivación, y el permiso permanece en la relación del rol (falta decidir si un permiso inactivo debe dejar de otorgar acceso real aunque el rol lo tenga asignado).
-- **Migraciones de base de datos**: el proyecto usa `ddl-auto=update` en vez de una herramienta de migraciones versionadas (Flyway/Liquibase). Es válido para una base de datos nueva, pero cualquier cambio de esquema sobre una base de datos con datos existentes puede requerir ajustes manuales (ver nota técnica abajo).
+- El proyecto crea las tablas automáticamente al arrancar, pero **no modifica** columnas que ya existen si cambias algo — si tocas una entidad ya usada en producción, puede requerir un ajuste manual en la base de datos.
+- Al validar el token JWT, el sistema a veces necesita traer datos relacionados (como el rol de un usuario) de una forma especial (`JOIN FETCH`) para evitar un error típico de Hibernate (`LazyInitializationException`).
+- Gmail exige una "contraseña de aplicación" especial, no tu contraseña normal, para poder enviar correos desde el sistema.
+- El archivo `.env` se carga solo, gracias a la librería `dotenv` — no hace falta configurar nada más en tu máquina.
+- A veces, durante desarrollo, Spring Boot DevTools puede confundirse después de muchos cambios seguidos y tirar errores raros (clases o configuraciones "no encontradas" que sí existen). Si pasa: detén la app por completo, borra la carpeta `target`, y reconstruye el proyecto antes de volver a ejecutar.
 
-## Notas técnicas relevantes
+## Despliegue en producción (Railway)
 
-- **`ddl-auto=update`** solo agrega tablas/columnas nuevas — no modifica ni elimina constraints existentes (ej. `NOT NULL`, `CHECK`). Esto no es un problema en una base de datos nueva (como al clonar este proyecto por primera vez), pero si alguna vez se modifica una entidad ya desplegada con datos reales, puede requerir un `ALTER TABLE` manual o migrar a una herramienta de migraciones versionadas (Flyway/Liquibase).
-- **Relaciones `LAZY`**: las consultas que necesitan acceder a relaciones lazy fuera del ciclo normal de una petición HTTP (por ejemplo, dentro del filtro de autenticación JWT) usan `JOIN FETCH` explícito en el repositorio para evitar `LazyInitializationException`.
-- **Contraseñas de Gmail**: Google exige "contraseñas de aplicación" (16 caracteres) para conexiones SMTP externas — la contraseña normal de la cuenta no funciona y Google la rechaza con error de autenticación.
-- **Jackson 2 vs 3**: Spring Boot 4 autoconfigura Jackson 3 por defecto. En los pocos lugares donde se serializa JSON manualmente fuera del flujo estándar de Spring MVC (filtros de seguridad), se evita depender de un `ObjectMapper` de Jackson 2 (que no está autoconfigurado como bean) construyendo el JSON de forma simple y directa.
+El backend ya está desplegado y funcionando en Railway. Configuración clave:
+
+- El proyecto usa Java 21, que coincide con la versión que Railway instala por defecto — no fue necesario ningún ajuste adicional para que el build funcione
+- Swagger está deshabilitado en producción (`SWAGGER_ENABLED=false`)
+- Todas las variables de entorno de la tabla de arriba están configuradas directamente en el panel de Railway, con valores propios de producción (distintos a los de desarrollo, especialmente `JWT_SECRET`)
 
 ## Cómo correr las pruebas
 
@@ -216,8 +235,8 @@ Sin los puntos 4-5, los usuarios que se registran como `DOCENTE` quedan indefini
 mvn test
 ```
 
-Las pruebas unitarias (`AuthServiceImplTest`) usan Mockito y no requieren base de datos. Las pruebas de integración (`AuthControllerIntegrationTest`) usan una base de datos H2 en memoria (perfil `test`), independiente de la base de datos de desarrollo.
+Las pruebas de servicios (con Mockito) no necesitan base de datos. Las pruebas de integración usan una base de datos H2 en memoria, separada de tu base de datos real.
 
-## Seguridad al contribuir
+## Antes de subir cambios a Git
 
-Antes de hacer commit, verifica que `application.properties` no contenga credenciales reales (contraseña de Gmail, credenciales de base de datos de producción, JWT secret real). Este proyecto usa variables de entorno con valores por defecto de desarrollo — mantén esa convención para no exponer secretos en el repositorio.
+Revisa que `application.properties` no tenga ninguna contraseña real escrita, y que tu archivo `.env` nunca se suba (debe estar en `.gitignore`). Si alguna vez un secreto se llegó a subir por error, considéralo comprometido y genera uno nuevo — quitarlo del control de versiones no borra lo que ya quedó en el historial de Git.

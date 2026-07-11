@@ -74,7 +74,7 @@ En Railway (donde está desplegado el backend), estas variables se configuran di
 | `MAIL_PASSWORD` | Contraseña de aplicación de Gmail (no la normal) | (la generas en tu cuenta Google) |
 | `FRONTEND_RESET_URL` | A dónde apunta el enlace de recuperar contraseña | `http://localhost:3000/reset-password` |
 | `CORS_ALLOWED_ORIGINS` | Qué frontend(s) pueden llamar a esta API | `http://localhost:4200` |
-| `SWAGGER_ENABLED` | Si Swagger está visible o no | `true` en desarrollo, `false` en producción |
+| `SWAGGER_ENABLED` | Si Swagger está visible o no | `true` solo en local; en producción siempre debe estar en `false` |
 | `PORT` | Puerto donde corre el servidor | `8080` |
 
 ### Cómo generar la contraseña de Gmail
@@ -116,6 +116,8 @@ contraseña: Admin123!
 | `ADMINISTRATIVO` | Matricular estudiantes y gestionar datos de matrícula |
 
 ## Documentación interactiva (Swagger)
+
+**Disponible solo en local** — en producción (Railway) está deshabilitado por seguridad (`SWAGGER_ENABLED=false`), así que esta URL no funciona ahí.
 
 ```
 http://localhost:8080/swagger-ui/index.html
@@ -159,7 +161,7 @@ Para probar endpoints que requieren estar logueado: haz login, copia el `token`,
 
 El proyecto completo tiene 12 historias de usuario, repartidas en 4 módulos y 4 personas del equipo. Esta tabla es el mapa general — de acá se desprende todo lo demás.
 
-### Módulo: Autenticación y accesos — *Camarena De La Cruz, Stefano Paolo*
+### Módulo: Autenticación y accesos
 
 | HU | Descripción | Prioridad | Estado |
 |---|---|---|---|
@@ -167,7 +169,7 @@ El proyecto completo tiene 12 historias de usuario, repartidas en 4 módulos y 4
 | HU-02 | Recuperar contraseña en caso de olvido | Media | ✅ Completa |
 | HU-03 | Gestionar roles y permisos de los usuarios | Alta | 🔶 En progreso (ver detalle abajo) |
 
-### Módulo: Matrícula — *Cruz Rios, Ericson Daniel*
+### Módulo: Matrícula
 
 | HU | Descripción | Prioridad | Estado |
 |---|---|---|---|
@@ -175,7 +177,7 @@ El proyecto completo tiene 12 historias de usuario, repartidas en 4 módulos y 4
 | HU-05 | Registrar los datos del apoderado del estudiante | Media | ✅ Completa |
 | HU-06 | Consultar y editar la información de matrícula | Media | ⏳ Pendiente |
 
-### Módulo: Notas — *Rojas Utani, Hernan*
+### Módulo: Notas
 
 | HU | Descripción | Prioridad | Estado |
 |---|---|---|---|
@@ -183,7 +185,7 @@ El proyecto completo tiene 12 historias de usuario, repartidas en 4 módulos y 4
 | HU-08 | Calcular automáticamente el promedio del estudiante | Alta | ⏳ No iniciado |
 | HU-09 | Consultar notas como padre de familia | Media | ⏳ No iniciado |
 
-### Módulo: Asistencia — *Soto Vargas, Giampierre*
+### Módulo: Asistencia
 
 | HU | Descripción | Prioridad | Estado |
 |---|---|---|---|
@@ -229,13 +231,22 @@ El backend ya está desplegado y funcionando en Railway. Configuración clave:
 - Swagger está deshabilitado en producción (`SWAGGER_ENABLED=false`)
 - Todas las variables de entorno de la tabla de arriba están configuradas directamente en el panel de Railway, con valores propios de producción (distintos a los de desarrollo, especialmente `JWT_SECRET`)
 
-## Cómo correr las pruebas
+## Pruebas automatizadas
 
 ```bash
 mvn test
 ```
 
-Las pruebas de servicios (con Mockito) no necesitan base de datos. Las pruebas de integración usan una base de datos H2 en memoria, separada de tu base de datos real.
+**Lo que ya tiene pruebas:**
+- `AuthServiceImplTest`: pruebas unitarias con Mockito (login, refresh, registro, recuperación de contraseña) — no necesitan base de datos
+- `AuthControllerIntegrationTest`: pruebas de integración con una base de datos H2 en memoria (separada de tu base de datos real), probando el flujo completo a través del controller
+
+**Lo que todavía no tiene pruebas (pendiente):**
+- Módulo de Matrícula completo (`EstudianteService`, `ApoderadoService`, `EstudianteApoderadoService`, `MatricularService`)
+- CRUD de Permisos y Roles
+- Aprobación de usuarios pendientes
+
+Mi recomendación: antes de seguir sumando funcionalidad nueva (Notas, Asistencia), conviene cerrar esta brecha con al menos pruebas unitarias del módulo de Matrícula — es la parte más compleja del proyecto hasta ahora (transacciones, validaciones de reglas de negocio como "una matrícula activa por periodo"), y es justo donde más fácil se cuela un bug si se modifica algo después sin darse cuenta.
 
 ## Antes de subir cambios a Git
 

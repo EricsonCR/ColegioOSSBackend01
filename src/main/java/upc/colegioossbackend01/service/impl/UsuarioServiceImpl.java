@@ -12,6 +12,7 @@ import upc.colegioossbackend01.mapper.UsuarioMapper;
 import upc.colegioossbackend01.repository.RolRepository;
 import upc.colegioossbackend01.repository.UsuarioRepository;
 import upc.colegioossbackend01.service.UsuarioService;
+import upc.colegioossbackend01.dto.request.CambiarRolRequest;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -48,8 +49,17 @@ public class UsuarioServiceImpl implements UsuarioService {
             throw new BusinessException("El usuario no está en estado pendiente de aprobación");
         }
 
-        Rol rol = rolRepository.findById(request.getRolId())
-                .orElseThrow(() -> new ResourceNotFoundException("Rol no encontrado"));
+        Rol rol;
+        if (request.getRolId() != null) {
+            rol = rolRepository.findById(request.getRolId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Rol no encontrado"));
+        } else {
+            if (usuario.getRolSolicitado() == null) {
+                throw new BusinessException("Debe indicar un rol, el usuario no tiene un rol solicitado registrado");
+            }
+            rol = rolRepository.findByNombre(usuario.getRolSolicitado())
+                    .orElseThrow(() -> new ResourceNotFoundException("El rol solicitado no está configurado en el sistema"));
+        }
 
         if (!rol.isActivo()) {
             throw new BusinessException("El rol seleccionado se encuentra inactivo");
@@ -64,5 +74,54 @@ public class UsuarioServiceImpl implements UsuarioService {
         usuarioRepository.save(usuario);
 
         return usuarioMapper.toUsuarioResponse(usuario);
+    }
+
+    @Override
+    public List<UsuarioResponse> listar(EstadoUsuario estado, Long rolId) {
+        return usuarioRepository.buscarConFiltros(estado, rolId)
+                .stream()
+                .map(usuarioMapper::toUsuarioResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public UsuarioResponse cambiarRol(Long usuarioId, CambiarRolRequest request) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+
+        if (usuario.getEstado() != EstadoUsuario.ACTIVO) {
+            throw new BusinessException("Solo se puede cambiar el rol de un usuario activo");
+        }
+
+        Rol rol = rolRepository.findById(request.getRolId())
+                .orElseThrow(() -> new ResourceNotFoundException("Rol no encontrado"));
+
+        if (!rol.isActivo()) {
+            throw new BusinessException("El rol seleccionado se encuentra inactivo");
+        }
+
+        if ("ADMIN".equals(rol.getNombre())) {
+            throw new BusinessException("No se puede asignar el rol ADMIN desde este endpoint");
+        }
+
+        usuario.setRol(rol);
+        usuarioRepository.save(usuario);
+
+        return usuarioMapper.toUsuarioResponse(usuario);
+    }
+
+    @Override
+    public UsuarioResponse cambiarEstado(String usernameAutenticado, Long usuarioIdObjetivo, EstadoUsuario nuevoEstado) {
+        Usuario usuarioObjetivo = usuarioRepository.findById(usuarioIdObjetivo)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado"));
+
+        if (usuarioObjetivo.getUsername().equals(usernameAutenticado)) {
+            throw new BusinessException("No puedes cambiar tu propio estado de cuenta");
+        }
+
+        usuarioObjetivo.setEstado(nuevoEstado);
+        usuarioRepository.save(usuarioObjetivo);
+
+        return usuarioMapper.toUsuarioResponse(usuarioObjetivo);
     }
 }

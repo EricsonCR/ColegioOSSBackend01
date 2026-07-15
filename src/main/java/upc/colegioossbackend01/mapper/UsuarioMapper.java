@@ -22,6 +22,7 @@ public class UsuarioMapper {
                 .token(token)
                 .refreshToken(refreshToken)
                 .rol(usuario.getRol().getNombre())
+                .nombreCompleto(usuario.getNombreCompleto())
                 .permisos(permisos)
                 .build();
     }
@@ -34,6 +35,7 @@ public class UsuarioMapper {
                 .nombreCompleto(usuario.getNombreCompleto())
                 .estado(usuario.getEstado())
                 .rol(usuario.getRol() != null ? usuario.getRol().getNombre() : null)
+                .rolSolicitado(usuario.getRolSolicitado())
                 .build();
     }
 }

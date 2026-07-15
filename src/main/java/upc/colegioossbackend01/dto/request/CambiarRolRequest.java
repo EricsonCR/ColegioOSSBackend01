@@ -12,7 +12,8 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class AprobarUsuarioRequest {
+public class CambiarRolRequest {
 
+    @NotNull(message = "El rol es obligatorio")
     private Long rolId;
 }

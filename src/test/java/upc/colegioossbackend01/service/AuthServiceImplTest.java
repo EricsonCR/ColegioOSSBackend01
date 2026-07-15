@@ -29,6 +29,8 @@ import upc.colegioossbackend01.dto.request.ForgotPasswordRequest;
 import upc.colegioossbackend01.dto.request.ResetPasswordRequest;
 import upc.colegioossbackend01.entity.PasswordResetToken;
 import upc.colegioossbackend01.repository.PasswordResetTokenRepository;
+import upc.colegioossbackend01.repository.EstudianteRepository;
+import upc.colegioossbackend01.repository.ApoderadoRepository;
 
 import java.time.LocalDateTime;
 
@@ -60,20 +62,24 @@ class AuthServiceImplTest {
     private PasswordResetTokenRepository passwordResetTokenRepository;
     @Mock
     private EmailService emailService;
+    @Mock
+    private EstudianteRepository estudianteRepository;
+    @Mock
+    private ApoderadoRepository apoderadoRepository;
 
     @InjectMocks
     private AuthServiceImpl authService;
 
     private Usuario usuarioActivo;
-    private Rol rolAlumno;
+    private Rol rolEstudiante;
 
     @BeforeEach
     void setUp() {
         Permiso permiso = Permiso.builder().id(1L).codigo("USUARIO_VER").build();
 
-        rolAlumno = Rol.builder()
+        rolEstudiante = Rol.builder()
                 .id(1L)
-                .nombre("ALUMNO")
+                .nombre("ESTUDIANTE")
                 .permisos(Set.of(permiso))
                 .build();
 
@@ -82,7 +88,7 @@ class AuthServiceImplTest {
                 .username("juan")
                 .password("hashed_password")
                 .estado(EstadoUsuario.ACTIVO)
-                .rol(rolAlumno)
+                .rol(rolEstudiante)
                 .build();
     }
 
@@ -173,23 +179,25 @@ class AuthServiceImplTest {
     // ---------- REGISTER ----------
 
     @Test
-    void register_deberiaActivarInmediatamente_cuandoRolSolicitadoEsAlumno() {
+    void register_deberiaActivarInmediatamente_cuandoRolSolicitadoEsEstudiante() {
         RegisterRequest request = RegisterRequest.builder()
-                .username("nuevo_alumno")
+                .username("nuevo_estudiante")
                 .password("123456")
-                .nombreCompleto("Nuevo Alumno")
-                .rolSolicitado("ALUMNO")
+                .nombreCompleto("Nuevo Estudiante")
+                .rolSolicitado("ESTUDIANTE")
                 .build();
 
-        when(usuarioRepository.existsByUsername("nuevo_alumno")).thenReturn(false);
+        when(usuarioRepository.existsByUsername("nuevo_estudiante")).thenReturn(false);
         when(passwordEncoder.encode("123456")).thenReturn("hashed");
-        when(rolRepository.findByNombre("ALUMNO")).thenReturn(Optional.of(rolAlumno));
+        when(rolRepository.findByNombre("ESTUDIANTE")).thenReturn(Optional.of(rolEstudiante));
+        when(rolRepository.findByNombre("ESTUDIANTE")).thenReturn(Optional.of(rolEstudiante));
+        // no hace falta stubear estudianteRepository.save si el mock ya no es null
 
         String mensaje = authService.register(request);
 
         assertThat(mensaje).containsIgnoringCase("activa");
         verify(usuarioRepository).save(argThat(u ->
-                u.getEstado() == EstadoUsuario.ACTIVO && u.getRol() == rolAlumno));
+                u.getEstado() == EstadoUsuario.ACTIVO && u.getRol() == rolEstudiante));
     }
 
     @Test
@@ -218,7 +226,7 @@ class AuthServiceImplTest {
                 .username("juan")
                 .password("123456")
                 .nombreCompleto("Juan Duplicado")
-                .rolSolicitado("ALUMNO")
+                .rolSolicitado("ESTUDIANTE")
                 .build();
 
         when(usuarioRepository.existsByUsername("juan")).thenReturn(true);

@@ -6,10 +6,10 @@ Backend del sistema de gestión del colegio. Este documento explica qué hace el
 
 Un backend en Spring Boot para un sistema escolar, con 4 módulos:
 
-1. **Autenticación** — login, recuperación de contraseña, roles y permisos
-2. **Matrícula** — registro de estudiantes, apoderados y matrículas
-3. **Notas** — registro de calificaciones y promedios (próximamente)
-4. **Asistencia** — control de asistencia diaria y reportes (próximamente)
+1. **Autenticación** — login, recuperación de contraseña, roles y permisos ✅ completo
+2. **Matrícula** — registro de estudiantes, apoderados y matrículas ✅ completo
+3. **Notas** — registro de calificaciones y promedios ⏳ no iniciado
+4. **Asistencia** — control de asistencia diaria y reportes ⏳ no iniciado
 
 ## Stack tecnológico
 
@@ -72,8 +72,8 @@ En Railway (donde está desplegado el backend), estas variables se configuran di
 | `MAIL_PORT` | Puerto del servidor de correo | `587` |
 | `MAIL_USERNAME` | Tu correo de Gmail | (el tuyo) |
 | `MAIL_PASSWORD` | Contraseña de aplicación de Gmail (no la normal) | (la generas en tu cuenta Google) |
-| `FRONTEND_RESET_URL` | A dónde apunta el enlace de recuperar contraseña | `http://localhost:3000/reset-password` |
-| `CORS_ALLOWED_ORIGINS` | Qué frontend(s) pueden llamar a esta API | `http://localhost:4200` |
+| `FRONTEND_RESET_URL` | A dónde apunta el enlace de recuperar contraseña | `http://localhost:4200/restablecer-password` |
+| `CORS_ALLOWED_ORIGINS` | Qué frontend(s) pueden llamar a esta API, separados por coma | `http://localhost:4200` |
 | `SWAGGER_ENABLED` | Si Swagger está visible o no | `true` solo en local; en producción siempre debe estar en `false` |
 | `PORT` | Puerto donde corre el servidor | `8080` |
 
@@ -103,17 +103,26 @@ usuario: admin
 contraseña: Admin123!
 ```
 
-## Qué datos vienen precargados
+Este es el único usuario que trae el sistema de fábrica. El resto de usuarios, estudiantes, apoderados y matrículas se crean navegando el propio sistema (registro público, formulario de matricular, etc.) — así las pruebas reflejan el flujo real de uso.
 
-**Permisos:** `USUARIO_CREAR`, `USUARIO_EDITAR`, `USUARIO_ELIMINAR`, `USUARIO_VER`, `MATRICULAR`, `MATRICULA_VER`, `MATRICULA_EDITAR`
+## Qué datos vienen precargados (`data.sql`)
+
+El script es intencionalmente **mínimo**: solo lo esencial para que el sistema arranque y sea usable desde una base de datos vacía. Es idempotente y seguro de ejecutar en cada arranque (`spring.sql.init.mode=always`), porque cada `INSERT` usa `ON CONFLICT` sobre una columna que sí tiene restricción `UNIQUE` real.
+
+**Permisos:** `USUARIO_CREAR`, `USUARIO_EDITAR`, `USUARIO_ELIMINAR`, `USUARIO_VER`, `MATRICULAR`, `MATRICULA_VER`, `MATRICULA_EDITAR`, `NOTA_VER`, `ASISTENCIA_VER`
 
 **Roles:**
 | Rol | Qué puede hacer |
 |---|---|
 | `ADMIN` | Todo (automáticamente incluye cualquier permiso nuevo que se agregue) |
 | `DOCENTE` | Ver y editar usuarios |
-| `ALUMNO` | Solo ver usuarios |
+| `ESTUDIANTE` | Solo ver usuarios |
 | `ADMINISTRATIVO` | Matricular estudiantes y gestionar datos de matrícula |
+| `APODERADO` | Ver notas y asistencia (para uso futuro) |
+
+**Usuario:** solo el `admin` semilla.
+
+> ⚠️ El rol que antes se llamaba `ALUMNO` fue renombrado a `ESTUDIANTE` para que coincida con el nombre de la entidad `Estudiante`. Si tienes datos antiguos con el rol `ALUMNO`, actualízalos manualmente: `UPDATE rol SET nombre = 'ESTUDIANTE' WHERE nombre = 'ALUMNO';`
 
 ## Documentación interactiva (Swagger)
 
@@ -132,19 +141,24 @@ Para probar endpoints que requieren estar logueado: haz login, copia el `token`,
 |---|---|---|
 | POST | `/api/auth/login` | Iniciar sesión |
 | POST | `/api/auth/refresh` | Renovar el token cuando expira |
-| POST | `/api/auth/register` | Registrarse (alumno se activa al toque, docente queda esperando aprobación) |
+| POST | `/api/auth/register` | Registrarse como `ESTUDIANTE`, `DOCENTE` o `APODERADO`. Requiere `tipoDocumento` y `numeroDocumento`. `ESTUDIANTE`/`APODERADO` se activan de inmediato y crean automáticamente su registro académico vinculado (`Estudiante`/`Apoderado`); `DOCENTE` queda `PENDIENTE` de aprobación |
 | POST | `/api/auth/forgot-password` | Pedir recuperar contraseña |
 | POST | `/api/auth/reset-password` | Cambiar la contraseña con el enlace recibido |
-
-### Permisos y Roles — solo ADMIN
-- `/api/permisos` y `/api/roles`: crear, listar, editar, activar/desactivar (nunca se borran físicamente)
-- `PUT /api/roles/{id}/permisos`: definir qué permisos tiene un rol
 
 ### Usuarios — solo ADMIN
 | Método | Ruta | Qué hace |
 |---|---|---|
-| GET | `/api/usuarios/pendientes` | Ver quién está esperando aprobación (ej. docentes recién registrados) |
-| PATCH | `/api/usuarios/{id}/aprobar` | Asignarle un rol y activar su cuenta |
+| GET | `/api/usuarios` | Listar usuarios (filtros opcionales `estado` y/o `rolId`) |
+| GET | `/api/usuarios/pendientes` | Ver quién está esperando aprobación |
+| PATCH | `/api/usuarios/{id}/aprobar` | Asignarle un rol y activar su cuenta. Si no se envía `rolId`, usa automáticamente el `rolSolicitado` guardado al momento del registro |
+| PATCH | `/api/usuarios/{id}/cambiar-rol` | Cambiar el rol de un usuario ya activo |
+| PATCH | `/api/usuarios/{id}/activar` \| `/desactivar` \| `/bloquear` | Cambiar el estado de la cuenta (un admin no puede hacerlo sobre sí mismo) |
+
+> No existe hoy un endpoint para que un admin **cree** una cuenta directamente — la única forma de que un `Usuario` se cree es a través del registro público (`/api/auth/register`). Ver sección de pendientes más abajo.
+
+### Permisos y Roles — solo ADMIN
+- `/api/permisos` y `/api/roles`: crear, listar, editar, activar/desactivar (nunca se borran físicamente)
+- `PUT /api/roles/{id}/permisos`: definir qué permisos tiene un rol
 
 ### Estudiantes y Apoderados — para ADMIN y ADMINISTRATIVO
 - `/api/estudiantes` y `/api/apoderados`: crear, listar, buscar por documento, editar, activar/desactivar
@@ -154,12 +168,15 @@ Para probar endpoints que requieren estar logueado: haz login, copia el `token`,
 | Método | Ruta | Qué hace |
 |---|---|---|
 | POST | `/api/matriculas` | Matricular a un estudiante (nuevo o existente) junto con sus apoderados, todo en un solo paso |
-
-*(Consultar y editar una matrícula ya existente todavía no está implementado — ver la lista de pendientes más abajo)*
+| GET | `/api/matriculas` | Listar matrículas (filtros opcionales: periodo, nivel, grado, estado) |
+| GET | `/api/matriculas/{id}` | Ver el detalle completo de una matrícula (estudiante + apoderados) |
+| PUT | `/api/matriculas/{id}` | Editar nivel, grado, sección, tipo o fecha de matrícula |
+| PATCH | `/api/matriculas/{id}/retirar` | Marcar la matrícula como retirada (ej. expulsión a mitad de año) |
+| PATCH | `/api/matriculas/{id}/trasladar` | Marcar la matrícula como trasladada |
 
 ## Todas las Historias de Usuario del proyecto
 
-El proyecto completo tiene 12 historias de usuario, repartidas en 4 módulos y 4 personas del equipo. Esta tabla es el mapa general — de acá se desprende todo lo demás.
+El proyecto completo tiene 12 historias de usuario, repartidas en 4 módulos.
 
 ### Módulo: Autenticación y accesos
 
@@ -167,7 +184,7 @@ El proyecto completo tiene 12 historias de usuario, repartidas en 4 módulos y 4
 |---|---|---|---|
 | HU-01 | Iniciar sesión con usuario y contraseña | Alta | ✅ Completa |
 | HU-02 | Recuperar contraseña en caso de olvido | Media | ✅ Completa |
-| HU-03 | Gestionar roles y permisos de los usuarios | Alta | 🔶 En progreso (ver detalle abajo) |
+| HU-03 | Gestionar roles y permisos de los usuarios | Alta | ✅ Completa |
 
 ### Módulo: Matrícula
 
@@ -175,7 +192,7 @@ El proyecto completo tiene 12 historias de usuario, repartidas en 4 módulos y 4
 |---|---|---|---|
 | HU-04 | Registrar la matrícula de un nuevo estudiante | Alta | ✅ Completa |
 | HU-05 | Registrar los datos del apoderado del estudiante | Media | ✅ Completa |
-| HU-06 | Consultar y editar la información de matrícula | Media | ⏳ Pendiente |
+| HU-06 | Consultar y editar la información de matrícula | Media | ✅ Completa |
 
 ### Módulo: Notas
 
@@ -193,26 +210,16 @@ El proyecto completo tiene 12 historias de usuario, repartidas en 4 módulos y 4
 | HU-11 | Generar reportes de inasistencias | Media | ⏳ No iniciado |
 | HU-12 | Consultar asistencia como padre de familia | Baja | ⏳ No iniciado |
 
-### Detalle de HU-03 (la única parcialmente terminada)
-
-| # | Qué falta | Estado |
-|---|---|---|
-| 1 | CRUD de Permisos | ✅ |
-| 2 | CRUD de Roles | ✅ |
-| 3 | Asignar/quitar permisos a un rol | ✅ |
-| 4 | Listar usuarios con filtros generales | ⏳ Pendiente |
-| 5 | Aprobar usuarios pendientes (asignar rol y activar) | ✅ |
-| 6 | Cambiar el rol de un usuario ya activo | ⏳ Pendiente |
-| 7 | Activar/desactivar/bloquear usuarios | ⏳ Pendiente |
-
 ## Reglas de negocio que hay que tener presentes
 
 - **Nadie puede autoasignarse el rol ADMIN** — ni al registrarse, ni cuando un admin aprueba a alguien pendiente. Es intencional, por seguridad.
 - **Nada se borra de verdad** — usuarios, roles, permisos, estudiantes y apoderados solo se "desactivan", nunca se eliminan de la base de datos.
 - **El código de un permiso y el nombre de un rol no se pueden cambiar** una vez creados (evita romper referencias). Los datos de estudiantes y apoderados sí son editables.
+- **El registro público crea automáticamente el registro académico correspondiente**: registrarse como `ESTUDIANTE` crea un `Estudiante` vinculado; como `APODERADO`, crea un `Apoderado` vinculado. Ambos quedan con `usuario_id` asociado, permitiendo a futuro que esa persona consulte su propia información (notas, asistencia).
+- **El campo `rolSolicitado`** queda guardado en el `Usuario` desde el registro, para que el admin sepa qué rol pidió la persona antes de aprobarla — sin necesidad de asignarlo automáticamente, aunque `aprobarUsuario` sí lo usa como default si no se especifica otro.
 - **Un estudiante no puede tener 2 matrículas activas en el mismo periodo** — si lo intentas, el sistema lo rechaza.
-- **Matricular exige al menos un apoderado** — no se puede dejar sin registrar.
-- **Si un apoderado ya estaba vinculado a un estudiante de una matrícula anterior**, el sistema lo reutiliza automáticamente sin duplicar ni dar error.
+- **Matricular exige al menos un apoderado** — no se puede dejar sin registrar. Es responsabilidad del frontend decidir cuántos pedir (el frontend propio de este proyecto pide solo 1, el que acompaña el trámite).
+- **La relación estudiante-apoderado es permanente**, no depende del periodo de matrícula — vive en `Estudiante`/`Apoderado`, no en `Matricula`. Si un apoderado ya estaba vinculado a un estudiante de una matrícula anterior, el sistema lo reutiliza automáticamente sin duplicar ni dar error.
 - **Los pagos (matrícula y pensiones) no están en este alcance todavía** — la idea a futuro es que se generen solos y queden "pendientes de pago", sin que alguien tenga que crearlos uno por uno a mano.
 
 ## Cosas técnicas que vale la pena saber
@@ -222,6 +229,7 @@ El proyecto completo tiene 12 historias de usuario, repartidas en 4 módulos y 4
 - Gmail exige una "contraseña de aplicación" especial, no tu contraseña normal, para poder enviar correos desde el sistema.
 - El archivo `.env` se carga solo, gracias a la librería `dotenv` — no hace falta configurar nada más en tu máquina.
 - A veces, durante desarrollo, Spring Boot DevTools puede confundirse después de muchos cambios seguidos y tirar errores raros (clases o configuraciones "no encontradas" que sí existen). Si pasa: detén la app por completo, borra la carpeta `target`, y reconstruye el proyecto antes de volver a ejecutar.
+- **`data.sql` y `ON CONFLICT DO NOTHING` solo protegen contra duplicados si la columna tiene una restricción `UNIQUE` real en la base de datos.** Si insertas datos de prueba en una tabla sin esa restricción (por ejemplo, en su momento pasó con `estudiante_apoderado` y con `matricula`), cada reinicio del backend vuelve a insertar las mismas filas, generando duplicados silenciosos que no dan error hasta que alguien nota los conteos raros. Por eso `data.sql` se mantiene mínimo: solo contiene inserts sobre columnas realmente únicas (`permiso.codigo`, `rol.nombre`, `usuario.username`). Cualquier dato de prueba adicional (estudiantes, matrículas, etc.) se crea navegando el sistema, no desde `data.sql`.
 
 ## Despliegue en producción (Railway)
 
@@ -231,22 +239,54 @@ El backend ya está desplegado y funcionando en Railway. Configuración clave:
 - Swagger está deshabilitado en producción (`SWAGGER_ENABLED=false`)
 - Todas las variables de entorno de la tabla de arriba están configuradas directamente en el panel de Railway, con valores propios de producción (distintos a los de desarrollo, especialmente `JWT_SECRET`)
 
+## Frontend
+
+Existe un frontend Angular propio de este proyecto (`colegio-oss-frontend-v2`), independiente del desarrollado por otro integrante del equipo. Cubre completamente HU-01 a HU-06:
+
+- Login unificado (un solo formulario, el backend determina el rol)
+- Registro con selector de rol y documento
+- Recuperar / restablecer contraseña
+- Gestión de usuarios (listar, aprobar, cambiar rol, activar/desactivar/bloquear)
+- CRUD de Roles y Permisos, con asignación de permisos a roles
+- CRUD de Estudiantes y Apoderados, con gestión de la relación entre ambos
+- Matricular (flujo guiado de 3 pasos: estudiante, apoderado, datos académicos)
+- Consultar y editar matrículas (con filtros, retirar, trasladar)
+
+Construido con Angular 21 standalone components, señales (`signal`/`computed`), un componente de tabla reutilizable (búsqueda, orden, paginación, badges, responsive) y modales reutilizables (formulario genérico y selección).
+
+## Pendientes conocidos
+
+- **No existe un endpoint ni pantalla para que un admin cree un `Usuario` directamente** — hoy la única vía es el registro público. Si se necesita crear cuentas de `ADMINISTRATIVO` o `DOCENTE` sin pasar por auto-registro, hay que construir `POST /api/usuarios` (backend) y su formulario correspondiente (frontend).
+- Módulo de Notas (HU-07, HU-08, HU-09) — no iniciado. Requiere definir entidades académicas nuevas (`Aula`, `Curso`, `AulaCurso`, `DocenteCurso`, `Evaluacion`, `CursoEvaluacion`, `Nota`).
+- Módulo de Asistencia (HU-10, HU-11, HU-12) — no iniciado. Requiere `Clase`, `Asistencia`.
+- Pruebas unitarias del módulo de Matrícula y de `UsuarioServiceImpl`/`RolServiceImpl`/`PermisoServiceImpl` — pendiente de ampliar cobertura (ver sección de pruebas).
+
 ## Pruebas automatizadas
 
 ```bash
 mvn test
 ```
 
-**Lo que ya tiene pruebas:**
-- `AuthServiceImplTest`: pruebas unitarias con Mockito (login, refresh, registro, recuperación de contraseña) — no necesitan base de datos
-- `AuthControllerIntegrationTest`: pruebas de integración con una base de datos H2 en memoria (separada de tu base de datos real), probando el flujo completo a través del controller
+**Cobertura actual — todos los módulos de Autenticación y Matrícula tienen pruebas unitarias:**
 
-**Lo que todavía no tiene pruebas (pendiente):**
-- Módulo de Matrícula completo (`EstudianteService`, `ApoderadoService`, `EstudianteApoderadoService`, `MatricularService`)
-- CRUD de Permisos y Roles
-- Aprobación de usuarios pendientes
+| Archivo de test | Qué cubre |
+|---|---|
+| `AuthServiceImplTest` | Login, refresh, registro (incluyendo creación automática de Estudiante/Apoderado), recuperación de contraseña |
+| `PermisoServiceImplTest` | CRUD de permisos |
+| `RolServiceImplTest` | CRUD de roles, asignación de permisos |
+| `UsuarioServiceImplTest` | Listar, aprobar, cambiar rol, cambiar estado |
+| `EstudianteServiceImplTest` | CRUD de estudiantes |
+| `ApoderadoServiceImplTest` | CRUD de apoderados |
+| `EstudianteApoderadoServiceImplTest` | Asignar/quitar apoderados, marcar principal |
+| `MatricularServiceImplTest` | Flujo transaccional de matricular (HU-04) |
+| `MatriculaServiceImplTest` | Consultar y editar matrícula (HU-06) |
+| `AuthControllerIntegrationTest` | Pruebas de integración con H2 en memoria |
 
-Mi recomendación: antes de seguir sumando funcionalidad nueva (Notas, Asistencia), conviene cerrar esta brecha con al menos pruebas unitarias del módulo de Matrícula — es la parte más compleja del proyecto hasta ahora (transacciones, validaciones de reglas de negocio como "una matrícula activa por periodo"), y es justo donde más fácil se cuela un bug si se modifica algo después sin darse cuenta.
+En total, más de 90 pruebas unitarias entre todos los servicios.
+
+**Lo que todavía no tiene pruebas (pendiente, para cuando se implementen):**
+- Módulo de Notas (HU-07, HU-08, HU-09)
+- Módulo de Asistencia (HU-10, HU-11, HU-12)
 
 ## Antes de subir cambios a Git
 

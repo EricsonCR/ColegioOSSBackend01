@@ -48,4 +48,8 @@ public class Apoderado extends Auditable {
     @Builder.Default
     @Column(nullable = false)
     private boolean activo = true;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usuario_id", unique = true)
+    private Usuario usuario;
 }

@@ -35,6 +35,9 @@ public class Usuario extends Auditable {
     @Column(length = 100)
     private String nombreCompleto;
 
+    @Column(name = "rol_solicitado", length = 30)
+    private String rolSolicitado;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     @Builder.Default

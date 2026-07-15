@@ -10,6 +10,9 @@ import upc.colegioossbackend01.dto.request.AprobarUsuarioRequest;
 import upc.colegioossbackend01.dto.response.ControllerResponse;
 import upc.colegioossbackend01.dto.response.UsuarioResponse;
 import upc.colegioossbackend01.service.UsuarioService;
+import upc.colegioossbackend01.enums.EstadoUsuario;
+import upc.colegioossbackend01.dto.request.CambiarRolRequest;
+import org.springframework.security.core.Authentication;
 
 import java.util.List;
 
@@ -37,5 +40,42 @@ public class UsuarioController {
     public ResponseEntity<ControllerResponse> aprobarUsuario(@PathVariable Long id, @Valid @RequestBody AprobarUsuarioRequest request) {
         UsuarioResponse response = usuarioService.aprobarUsuario(id, request);
         return ResponseEntity.ok(ControllerResponse.ok(response, "Usuario aprobado y activado exitosamente"));
+    }
+
+    @GetMapping
+    @Operation(summary = "Listar usuarios", description = "Filtros opcionales por estado y/o rol")
+    public ResponseEntity<ControllerResponse> listar(
+            @RequestParam(required = false) EstadoUsuario estado,
+            @RequestParam(required = false) Long rolId) {
+        List<UsuarioResponse> response = usuarioService.listar(estado, rolId);
+        return ResponseEntity.ok(ControllerResponse.ok(response, "Listado de usuarios"));
+    }
+
+    @PatchMapping("/{id}/cambiar-rol")
+    @Operation(summary = "Cambiar el rol de un usuario activo")
+    public ResponseEntity<ControllerResponse> cambiarRol(@PathVariable Long id, @Valid @RequestBody CambiarRolRequest request) {
+        UsuarioResponse response = usuarioService.cambiarRol(id, request);
+        return ResponseEntity.ok(ControllerResponse.ok(response, "Rol actualizado exitosamente"));
+    }
+
+    @PatchMapping("/{id}/activar")
+    @Operation(summary = "Activar usuario")
+    public ResponseEntity<ControllerResponse> activar(@PathVariable Long id, Authentication authentication) {
+        UsuarioResponse response = usuarioService.cambiarEstado(authentication.getName(), id, EstadoUsuario.ACTIVO);
+        return ResponseEntity.ok(ControllerResponse.ok(response, "Usuario activado exitosamente"));
+    }
+
+    @PatchMapping("/{id}/desactivar")
+    @Operation(summary = "Desactivar usuario")
+    public ResponseEntity<ControllerResponse> desactivar(@PathVariable Long id, Authentication authentication) {
+        UsuarioResponse response = usuarioService.cambiarEstado(authentication.getName(), id, EstadoUsuario.INACTIVO);
+        return ResponseEntity.ok(ControllerResponse.ok(response, "Usuario desactivado exitosamente"));
+    }
+
+    @PatchMapping("/{id}/bloquear")
+    @Operation(summary = "Bloquear usuario")
+    public ResponseEntity<ControllerResponse> bloquear(@PathVariable Long id, Authentication authentication) {
+        UsuarioResponse response = usuarioService.cambiarEstado(authentication.getName(), id, EstadoUsuario.BLOQUEADO);
+        return ResponseEntity.ok(ControllerResponse.ok(response, "Usuario bloqueado exitosamente"));
     }
 }

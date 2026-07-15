@@ -39,11 +39,11 @@ public class Estudiante extends Auditable {
     @Column(nullable = false, length = 150)
     private String apellidos;
 
-    @Column(name = "fecha_nacimiento", nullable = false)
+    @Column(name = "fecha_nacimiento")
     private LocalDate fechaNacimiento;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 15)
+    @Column(length = 15)
     private Genero genero;
 
     @Column(length = 255)
@@ -52,4 +52,8 @@ public class Estudiante extends Auditable {
     @Builder.Default
     @Column(nullable = false)
     private boolean activo = true;
+
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "usuario_id", unique = true)
+    private Usuario usuario;
 }

@@ -15,7 +15,8 @@ import lombok.EqualsAndHashCode;
 @AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
 @Entity
-@Table(name = "estudiante_apoderado")
+@Table(name = "estudiante_apoderado",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"estudiante_id", "apoderado_id"}))
 public class EstudianteApoderado extends Auditable {
 
     @Id

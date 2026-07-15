@@ -26,6 +26,11 @@ import upc.colegioossbackend01.entity.PasswordResetToken;
 import upc.colegioossbackend01.repository.PasswordResetTokenRepository;
 import upc.colegioossbackend01.service.EmailService;
 
+import upc.colegioossbackend01.entity.Apoderado;
+import upc.colegioossbackend01.entity.Estudiante;
+import upc.colegioossbackend01.repository.ApoderadoRepository;
+import upc.colegioossbackend01.repository.EstudianteRepository;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -35,6 +40,8 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
+    private final EstudianteRepository estudianteRepository;
+    private final ApoderadoRepository apoderadoRepository;
     private final PasswordResetTokenRepository passwordResetTokenRepository;
     private final JwtService jwtService;
     private final UsuarioMapper usuarioMapper;
@@ -44,6 +51,8 @@ public class AuthServiceImpl implements AuthService {
     public AuthServiceImpl(AuthenticationManager authenticationManager,
                            UsuarioRepository usuarioRepository,
                            RolRepository rolRepository,
+                           EstudianteRepository estudianteRepository,
+                           ApoderadoRepository apoderadoRepository,
                            PasswordResetTokenRepository passwordResetTokenRepository,
                            JwtService jwtService,
                            UsuarioMapper usuarioMapper,
@@ -52,6 +61,8 @@ public class AuthServiceImpl implements AuthService {
         this.authenticationManager = authenticationManager;
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
+        this.estudianteRepository = estudianteRepository;
+        this.apoderadoRepository = apoderadoRepository;
         this.passwordResetTokenRepository = passwordResetTokenRepository;
         this.jwtService = jwtService;
         this.usuarioMapper = usuarioMapper;
@@ -112,23 +123,66 @@ public class AuthServiceImpl implements AuthService {
         usuario.setEmail(request.getEmail());
         usuario.setPassword(passwordEncoder.encode(request.getPassword()));
         usuario.setNombreCompleto(request.getNombreCompleto());
+        usuario.setRolSolicitado(request.getRolSolicitado());
 
-        if ("ALUMNO".equals(request.getRolSolicitado())) {
-            Rol rolAlumno = rolRepository.findByNombre("ALUMNO")
-                    .orElseThrow(() -> new ResourceNotFoundException("Rol ALUMNO no configurado en el sistema"));
+        String[] nombresApellidos = separarNombreCompleto(request.getNombreCompleto());
 
-            usuario.setRol(rolAlumno);
-            usuario.setEstado(EstadoUsuario.ACTIVO);
-            usuarioRepository.save(usuario);
+        switch (request.getRolSolicitado()) {
+            case "ESTUDIANTE" -> {
+                Rol rolEstudiante = rolRepository.findByNombre("ESTUDIANTE")
+                        .orElseThrow(() -> new ResourceNotFoundException("Rol ESTUDIANTE no configurado en el sistema"));
 
-            return "Usuario registrado. Su cuenta ya está activa, ya puede iniciar sesión.";
-        } else {
-            usuario.setRol(null);
-            usuario.setEstado(EstadoUsuario.PENDIENTE);
-            usuarioRepository.save(usuario);
+                usuario.setRol(rolEstudiante);
+                usuario.setEstado(EstadoUsuario.ACTIVO);
+                usuarioRepository.save(usuario);
 
-            return "Usuario registrado. Su cuenta está pendiente de aprobación por un administrador.";
+                Estudiante estudiante = Estudiante.builder()
+                        .tipoDocumento(request.getTipoDocumento())
+                        .numeroDocumento(request.getNumeroDocumento())
+                        .nombres(nombresApellidos[0])
+                        .apellidos(nombresApellidos[1])
+                        .activo(true)
+                        .usuario(usuario)
+                        .build();
+                estudianteRepository.save(estudiante);
+
+                return "Usuario registrado. Su cuenta ya está activa, ya puede iniciar sesión.";
+            }
+            case "APODERADO" -> {
+                Rol rolApoderado = rolRepository.findByNombre("APODERADO")
+                        .orElseThrow(() -> new ResourceNotFoundException("Rol APODERADO no configurado en el sistema"));
+
+                usuario.setRol(rolApoderado);
+                usuario.setEstado(EstadoUsuario.ACTIVO);
+                usuarioRepository.save(usuario);
+
+                Apoderado apoderado = Apoderado.builder()
+                        .tipoDocumento(request.getTipoDocumento())
+                        .numeroDocumento(request.getNumeroDocumento())
+                        .nombres(nombresApellidos[0])
+                        .apellidos(nombresApellidos[1])
+                        .activo(true)
+                        .usuario(usuario)
+                        .build();
+                apoderadoRepository.save(apoderado);
+
+                return "Usuario registrado. Su cuenta ya está activa, ya puede iniciar sesión.";
+            }
+            default -> {
+                usuario.setRol(null);
+                usuario.setEstado(EstadoUsuario.PENDIENTE);
+                usuarioRepository.save(usuario);
+
+                return "Usuario registrado. Su cuenta está pendiente de aprobación por un administrador.";
+            }
         }
+    }
+
+    private String[] separarNombreCompleto(String nombreCompleto) {
+        String[] partes = nombreCompleto.trim().split("\\s+", 2);
+        String nombres = partes[0];
+        String apellidos = partes.length > 1 ? partes[1] : "";
+        return new String[]{nombres, apellidos};
     }
 
     @Override

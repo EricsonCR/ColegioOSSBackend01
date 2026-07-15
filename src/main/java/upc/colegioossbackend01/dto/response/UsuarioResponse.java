@@ -20,4 +20,5 @@ public class UsuarioResponse {
     private String nombreCompleto;
     private EstadoUsuario estado;
     private String rol;
+    private String rolSolicitado;
 }

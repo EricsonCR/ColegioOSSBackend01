@@ -23,4 +23,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
     Optional<Usuario> findByUsernameWithRolYPermisos(@Param("username") String username);
 
     List<Usuario> findByEstado(EstadoUsuario estado);
+
+    @Query("SELECT u FROM Usuario u LEFT JOIN FETCH u.rol " +
+            "WHERE (:estado IS NULL OR u.estado = :estado) " +
+            "AND (:rolId IS NULL OR u.rol.id = :rolId)")
+    List<Usuario> buscarConFiltros(@Param("estado") EstadoUsuario estado, @Param("rolId") Long rolId);
 }

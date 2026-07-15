@@ -41,3 +41,7 @@ select r.nombre,p.codigo, u.email, u.username, u.estado from rol_permiso rp
     inner join usuario u on u.rol_id = r.id
 where p.codigo like  '%MATRICULA%';
 
+UPDATE rol SET nombre = 'ESTUDIANTE' WHERE nombre = 'ALUMNO';
+
+ALTER TABLE estudiante ALTER COLUMN fecha_nacimiento DROP NOT NULL;
+ALTER TABLE estudiante ALTER COLUMN genero DROP NOT NULL;

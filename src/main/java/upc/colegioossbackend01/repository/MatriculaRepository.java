@@ -16,6 +16,9 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Long> {
 
     List<Matricula> findByEstudianteId(Long estudianteId);
 
+    List<Matricula> findByPeriodoAndNivelAndGradoAndSeccionAndEstado(
+            Integer periodo, Nivel nivel, Integer grado, String seccion, EstadoMatricula estado);
+
     @Query("SELECT m FROM Matricula m LEFT JOIN FETCH m.estudiante " +
             "WHERE (:periodo IS NULL OR m.periodo = :periodo) " +
             "AND (:nivel IS NULL OR m.nivel = :nivel) " +

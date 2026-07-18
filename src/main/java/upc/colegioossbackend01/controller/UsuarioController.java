@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import upc.colegioossbackend01.dto.request.AprobarUsuarioRequest;
+import upc.colegioossbackend01.dto.request.CrearUsuarioRequest;
 import upc.colegioossbackend01.dto.response.ControllerResponse;
 import upc.colegioossbackend01.dto.response.UsuarioResponse;
 import upc.colegioossbackend01.service.UsuarioService;
@@ -40,6 +41,13 @@ public class UsuarioController {
     public ResponseEntity<ControllerResponse> aprobarUsuario(@PathVariable Long id, @Valid @RequestBody AprobarUsuarioRequest request) {
         UsuarioResponse response = usuarioService.aprobarUsuario(id, request);
         return ResponseEntity.ok(ControllerResponse.ok(response, "Usuario aprobado y activado exitosamente"));
+    }
+
+    @PostMapping
+    @Operation(summary = "Crear usuario", description = "Crea un usuario directamente, ya activo y con rol asignado, sin pasar por aprobación")
+    public ResponseEntity<ControllerResponse> crear(@Valid @RequestBody CrearUsuarioRequest request) {
+        UsuarioResponse response = usuarioService.crear(request);
+        return ResponseEntity.ok(ControllerResponse.ok(response, "Usuario creado exitosamente"));
     }
 
     @GetMapping

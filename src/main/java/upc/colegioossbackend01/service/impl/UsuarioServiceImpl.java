@@ -1,7 +1,9 @@
 package upc.colegioossbackend01.service.impl;
 
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import upc.colegioossbackend01.dto.request.AprobarUsuarioRequest;
+import upc.colegioossbackend01.dto.request.CrearUsuarioRequest;
 import upc.colegioossbackend01.dto.response.UsuarioResponse;
 import upc.colegioossbackend01.entity.Rol;
 import upc.colegioossbackend01.entity.Usuario;
@@ -23,13 +25,16 @@ public class UsuarioServiceImpl implements UsuarioService {
     private final UsuarioRepository usuarioRepository;
     private final RolRepository rolRepository;
     private final UsuarioMapper usuarioMapper;
+    private final PasswordEncoder passwordEncoder;
 
     public UsuarioServiceImpl(UsuarioRepository usuarioRepository,
                               RolRepository rolRepository,
-                              UsuarioMapper usuarioMapper) {
+                              UsuarioMapper usuarioMapper,
+                              PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
         this.usuarioMapper = usuarioMapper;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -82,6 +87,40 @@ public class UsuarioServiceImpl implements UsuarioService {
                 .stream()
                 .map(usuarioMapper::toUsuarioResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public UsuarioResponse crear(CrearUsuarioRequest request) {
+        if (usuarioRepository.existsByUsername(request.getUsername())) {
+            throw new BusinessException("El usuario ya existe");
+        }
+
+        if (usuarioRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessException("El email ya está registrado");
+        }
+
+        Rol rol = rolRepository.findById(request.getRolId())
+                .orElseThrow(() -> new ResourceNotFoundException("Rol no encontrado"));
+
+        if (!rol.isActivo()) {
+            throw new BusinessException("El rol seleccionado se encuentra inactivo");
+        }
+
+        if ("ESTUDIANTE".equals(rol.getNombre()) || "APODERADO".equals(rol.getNombre())) {
+            throw new BusinessException("Los roles ESTUDIANTE y APODERADO deben crear su cuenta mediante el registro público, para vincularse correctamente a su información académica");
+        }
+
+        Usuario usuario = new Usuario();
+        usuario.setUsername(request.getUsername());
+        usuario.setEmail(request.getEmail());
+        usuario.setPassword(passwordEncoder.encode(request.getPassword()));
+        usuario.setNombreCompleto(request.getNombreCompleto());
+        usuario.setRol(rol);
+        usuario.setEstado(EstadoUsuario.ACTIVO);
+
+        usuarioRepository.save(usuario);
+
+        return usuarioMapper.toUsuarioResponse(usuario);
     }
 
     @Override

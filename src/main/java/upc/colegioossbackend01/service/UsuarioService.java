@@ -2,6 +2,7 @@ package upc.colegioossbackend01.service;
 
 import upc.colegioossbackend01.dto.request.AprobarUsuarioRequest;
 import upc.colegioossbackend01.dto.request.CambiarRolRequest;
+import upc.colegioossbackend01.dto.request.CrearUsuarioRequest;
 import upc.colegioossbackend01.dto.response.UsuarioResponse;
 import upc.colegioossbackend01.enums.EstadoUsuario;
 
@@ -12,6 +13,8 @@ public interface UsuarioService {
     List<UsuarioResponse> listarPendientes();
 
     List<UsuarioResponse> listar(EstadoUsuario estado, Long rolId);
+
+    UsuarioResponse crear(CrearUsuarioRequest request);
 
     UsuarioResponse aprobarUsuario(Long usuarioId, AprobarUsuarioRequest request);
 

@@ -1,6 +1,6 @@
 # ColegioOSSBackend01
 
-Backend del sistema de gestión del colegio. Este documento explica qué hace el proyecto, cómo levantarlo en tu máquina, y en qué estado está cada funcionalidad — pensado para que cualquiera del equipo (o alguien nuevo que se sume) pueda entenderlo sin depender de que se lo expliquen en persona.
+Backend del sistema de gestión del colegio. Este documento explica qué hace el proyecto, cómo levantarlo en tu máquina, y en qué estado está cada funcionalidad.
 
 ## ¿Qué es este proyecto?
 
@@ -8,258 +8,232 @@ Un backend en Spring Boot para un sistema escolar, con 4 módulos:
 
 1. **Autenticación** — login, recuperación de contraseña, roles y permisos ✅ completo
 2. **Matrícula** — registro de estudiantes, apoderados y matrículas ✅ completo
-3. **Notas** — registro de calificaciones y promedios ⏳ no iniciado
-4. **Asistencia** — control de asistencia diaria y reportes ⏳ no iniciado
+3. **Notas** — registro de calificaciones (HU-07 completa; HU-08 y HU-09 pendientes)
+4. **Asistencia** — control de asistencia diaria (HU-10 en construcción; HU-11 y HU-12 pendientes)
 
 ## Stack tecnológico
 
-- **Java 21**
-- **Spring Boot 4.1.0**
-- **Maven**
-- **PostgreSQL**
-- **Spring Security + JWT** (autenticación sin sesiones, con tokens)
-- **Swagger / OpenAPI** (documentación interactiva de la API)
-- **Lombok** (menos código repetitivo)
-- **Spring Mail** (envío de correos vía Gmail)
-- **springboot4-dotenv** (variables de entorno locales desde un archivo `.env`)
-
-## Dependencias principales
-
-| Dependencia | Para qué sirve |
-|---|---|
-| `spring-boot-starter-data-jpa` | Conectar y trabajar con la base de datos |
-| `spring-boot-starter-webmvc` | Exponer la API REST |
-| `spring-boot-starter-security` | Login y control de acceso |
-| `spring-boot-starter-validation` | Validar los datos que llegan en cada request |
-| `spring-boot-starter-mail` | Enviar correos (recuperación de contraseña) |
-| `postgresql` | Conectarse a PostgreSQL |
-| `lombok` | Generar getters/setters/builders automáticamente |
-| `io.jsonwebtoken:jjwt-*` | Crear y validar los tokens JWT |
-| `org.springdoc:springdoc-openapi-starter-webmvc-ui` | Generar la documentación Swagger |
-| `me.paulschwarz:springboot4-dotenv` | Leer el archivo `.env` automáticamente |
-| `h2` (solo pruebas) | Base de datos en memoria para los tests |
-
-## Antes de empezar, necesitas tener instalado
-
-- **JDK 21**
-- **Maven**
-- **PostgreSQL** (local, o acceso a una base remota)
-- **Cuenta de Gmail** con verificación en 2 pasos, solo si vas a probar el envío de correos
-
-## Cómo configurar tus variables de entorno
-
-El proyecto usa 3 archivos para separar qué es público y qué es secreto:
-
-| Archivo | ¿Se sube a Git? | Para qué |
-|---|---|---|
-| `application.properties` | Sí | La plantilla de configuración, sin contraseñas reales |
-| `.env` | **No** (está en `.gitignore`) | Tus contraseñas y claves reales, solo en tu máquina |
-| `.env.example` | Sí | Un ejemplo de `.env` para que sepas qué variables necesitas llenar |
-
-En Railway (donde está desplegado el backend), estas variables se configuran directamente en el panel del proyecto, no se usa el archivo `.env` ahí.
-
-### Variables que necesitas configurar
-
-| Variable | Para qué es | Valor de ejemplo (desarrollo) |
-|---|---|---|
-| `SPRING_DATASOURCE_URL` | Conexión a tu base de datos | `jdbc:postgresql://localhost:5432/colegio_oss_db` |
-| `SPRING_DATASOURCE_USERNAME` | Usuario de PostgreSQL | `postgres` |
-| `SPRING_DATASOURCE_PASSWORD` | Contraseña de PostgreSQL | (la tuya) |
-| `JWT_SECRET` | Clave secreta para firmar los tokens | genera una con `openssl rand -base64 64` |
-| `JWT_ACCESS_EXPIRATION_MS` | Cuánto dura el token de acceso | `300000` (5 minutos) |
-| `JWT_REFRESH_EXPIRATION_MS` | Cuánto dura el token de refresco | `604800000` (7 días) |
-| `MAIL_HOST` | Servidor de correo | `smtp.gmail.com` |
-| `MAIL_PORT` | Puerto del servidor de correo | `587` |
-| `MAIL_USERNAME` | Tu correo de Gmail | (el tuyo) |
-| `MAIL_PASSWORD` | Contraseña de aplicación de Gmail (no la normal) | (la generas en tu cuenta Google) |
-| `FRONTEND_RESET_URL` | A dónde apunta el enlace de recuperar contraseña | `http://localhost:4200/restablecer-password` |
-| `CORS_ALLOWED_ORIGINS` | Qué frontend(s) pueden llamar a esta API, separados por coma | `http://localhost:4200` |
-| `SWAGGER_ENABLED` | Si Swagger está visible o no | `true` solo en local; en producción siempre debe estar en `false` |
-| `PORT` | Puerto donde corre el servidor | `8080` |
-
-### Cómo generar la contraseña de Gmail
-
-1. Activa la verificación en 2 pasos: [myaccount.google.com/security](https://myaccount.google.com/security)
-2. Genera una contraseña de aplicación: [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-3. Usa esos 16 caracteres (sin espacios) como `MAIL_PASSWORD`
-
-Si no configuras el correo, el resto del sistema sigue funcionando normal — solo el envío de emails fallará en silencio (queda anotado en el log, pero no rompe nada para el usuario).
+- **Java 21**, **Spring Boot 4.1.0**, **Maven**, **PostgreSQL**
+- **Spring Security + JWT**
+- **Swagger / OpenAPI**
+- **Lombok**
+- **Spring Mail**
+- **springboot4-dotenv**
 
 ## Cómo levantar el proyecto
 
-**Desde IntelliJ:** ejecuta `ColegioOssBackend01Application`.
-
-**Desde la terminal:**
 ```bash
 mvn spring-boot:run
 ```
 
-La primera vez, crea tú mismo la base de datos vacía (`CREATE DATABASE colegio_oss_db;`) — el resto (tablas y datos base) se genera automáticamente al arrancar.
+Crea tú mismo la base de datos vacía (`CREATE DATABASE colegio_oss_db;`) — el resto se genera automáticamente.
 
-## Usuario de prueba ya incluido
+## Usuario de prueba
 
 ```
 usuario: admin
 contraseña: Admin123!
 ```
 
-Este es el único usuario que trae el sistema de fábrica. El resto de usuarios, estudiantes, apoderados y matrículas se crean navegando el propio sistema (registro público, formulario de matricular, etc.) — así las pruebas reflejan el flujo real de uso.
+`data.sql` es intencionalmente mínimo (permisos, roles, el admin) — el resto de datos se crean navegando el sistema. Ver la nota técnica al final sobre por qué no se agregan más datos de prueba directamente ahí.
 
-## Qué datos vienen precargados (`data.sql`)
+## Variables de entorno
 
-El script es intencionalmente **mínimo**: solo lo esencial para que el sistema arranque y sea usable desde una base de datos vacía. Es idempotente y seguro de ejecutar en cada arranque (`spring.sql.init.mode=always`), porque cada `INSERT` usa `ON CONFLICT` sobre una columna que sí tiene restricción `UNIQUE` real.
-
-**Permisos:** `USUARIO_CREAR`, `USUARIO_EDITAR`, `USUARIO_ELIMINAR`, `USUARIO_VER`, `MATRICULAR`, `MATRICULA_VER`, `MATRICULA_EDITAR`, `NOTA_VER`, `ASISTENCIA_VER`
-
-**Roles:**
-| Rol | Qué puede hacer |
+| Variable | Para qué es |
 |---|---|
-| `ADMIN` | Todo (automáticamente incluye cualquier permiso nuevo que se agregue) |
-| `DOCENTE` | Ver y editar usuarios |
-| `ESTUDIANTE` | Solo ver usuarios |
-| `ADMINISTRATIVO` | Matricular estudiantes y gestionar datos de matrícula |
-| `APODERADO` | Ver notas y asistencia (para uso futuro) |
-
-**Usuario:** solo el `admin` semilla.
-
-> ⚠️ El rol que antes se llamaba `ALUMNO` fue renombrado a `ESTUDIANTE` para que coincida con el nombre de la entidad `Estudiante`. Si tienes datos antiguos con el rol `ALUMNO`, actualízalos manualmente: `UPDATE rol SET nombre = 'ESTUDIANTE' WHERE nombre = 'ALUMNO';`
+| `SPRING_DATASOURCE_URL` / `_USERNAME` / `_PASSWORD` | Conexión a PostgreSQL |
+| `JWT_SECRET` | Clave para firmar tokens |
+| `JWT_ACCESS_EXPIRATION_MS` / `JWT_REFRESH_EXPIRATION_MS` | Duración de tokens |
+| `MAIL_HOST` / `_PORT` / `_USERNAME` / `_PASSWORD` | Envío de correos (Gmail) |
+| `FRONTEND_RESET_URL` | URL del frontend para el enlace de recuperación |
+| `CORS_ALLOWED_ORIGINS` | Orígenes permitidos, separados por coma |
+| `SWAGGER_ENABLED` | `true` solo en local |
+| `PORT` | Puerto del servidor |
 
 ## Documentación interactiva (Swagger)
 
-**Disponible solo en local** — en producción (Railway) está deshabilitado por seguridad (`SWAGGER_ENABLED=false`), así que esta URL no funciona ahí.
-
-```
-http://localhost:8080/swagger-ui/index.html
-```
-
-Para probar endpoints que requieren estar logueado: haz login, copia el `token`, dale click a **"Authorize"** arriba a la derecha, pégalo (no hace falta escribir "Bearer ", se agrega solo).
+Solo en local: `http://localhost:8080/swagger-ui/index.html`
 
 ## Endpoints disponibles
 
-### Autenticación — no requiere estar logueado
+### Autenticación y accesos (HU-01 — completa)
 | Método | Ruta | Qué hace |
 |---|---|---|
 | POST | `/api/auth/login` | Iniciar sesión |
-| POST | `/api/auth/refresh` | Renovar el token cuando expira |
-| POST | `/api/auth/register` | Registrarse como `ESTUDIANTE`, `DOCENTE` o `APODERADO`. Requiere `tipoDocumento` y `numeroDocumento`. `ESTUDIANTE`/`APODERADO` se activan de inmediato y crean automáticamente su registro académico vinculado (`Estudiante`/`Apoderado`); `DOCENTE` queda `PENDIENTE` de aprobación |
-| POST | `/api/auth/forgot-password` | Pedir recuperar contraseña |
-| POST | `/api/auth/reset-password` | Cambiar la contraseña con el enlace recibido |
+| POST | `/api/auth/refresh` | Renovar el token de acceso |
+| POST | `/api/auth/register` | Registrarse (ESTUDIANTE/APODERADO activo inmediato con vínculo automático; DOCENTE queda pendiente) |
+| POST | `/api/auth/forgot-password` | Solicitar recuperación de contraseña |
+| POST | `/api/auth/reset-password` | Restablecer contraseña con el token recibido |
 
-### Usuarios — solo ADMIN
+### Usuarios y accesos (HU-03 — completa) — solo ADMIN
 | Método | Ruta | Qué hace |
 |---|---|---|
-| GET | `/api/usuarios` | Listar usuarios (filtros opcionales `estado` y/o `rolId`) |
-| GET | `/api/usuarios/pendientes` | Ver quién está esperando aprobación |
-| PATCH | `/api/usuarios/{id}/aprobar` | Asignarle un rol y activar su cuenta. Si no se envía `rolId`, usa automáticamente el `rolSolicitado` guardado al momento del registro |
-| PATCH | `/api/usuarios/{id}/cambiar-rol` | Cambiar el rol de un usuario ya activo |
-| PATCH | `/api/usuarios/{id}/activar` \| `/desactivar` \| `/bloquear` | Cambiar el estado de la cuenta (un admin no puede hacerlo sobre sí mismo) |
-
-> No existe hoy un endpoint para que un admin **cree** una cuenta directamente — la única forma de que un `Usuario` se cree es a través del registro público (`/api/auth/register`). Ver sección de pendientes más abajo.
+| GET | `/api/usuarios` | Listar (filtros `estado`, `rolId`) |
+| GET | `/api/usuarios/pendientes` | Ver pendientes de aprobación |
+| POST | `/api/usuarios` | Crear usuario directo, ya activo (no permite roles ESTUDIANTE/APODERADO — esos deben auto-registrarse) |
+| PATCH | `/api/usuarios/{id}/aprobar` | Aprobar pendiente (usa `rolSolicitado` si no se envía `rolId`) |
+| PATCH | `/api/usuarios/{id}/cambiar-rol` | Cambiar rol |
+| PATCH | `/api/usuarios/{id}/activar` \| `/desactivar` \| `/bloquear` | Cambiar estado |
 
 ### Permisos y Roles — solo ADMIN
-- `/api/permisos` y `/api/roles`: crear, listar, editar, activar/desactivar (nunca se borran físicamente)
-- `PUT /api/roles/{id}/permisos`: definir qué permisos tiene un rol
+CRUD completo con soft delete + `PUT /api/roles/{id}/permisos`
 
-### Estudiantes y Apoderados — para ADMIN y ADMINISTRATIVO
-- `/api/estudiantes` y `/api/apoderados`: crear, listar, buscar por documento, editar, activar/desactivar
-- `/api/estudiantes/{id}/apoderados`: asignar o quitar apoderados de un estudiante
+### Estudiantes y Apoderados — ADMIN y ADMINISTRATIVO
+CRUD completo + `POST/GET/PATCH /api/estudiantes/{id}/apoderados`
 
-### Matrícula
+### Matrícula (HU-04 — completa)
 | Método | Ruta | Qué hace |
 |---|---|---|
-| POST | `/api/matriculas` | Matricular a un estudiante (nuevo o existente) junto con sus apoderados, todo en un solo paso |
-| GET | `/api/matriculas` | Listar matrículas (filtros opcionales: periodo, nivel, grado, estado) |
-| GET | `/api/matriculas/{id}` | Ver el detalle completo de una matrícula (estudiante + apoderados) |
-| PUT | `/api/matriculas/{id}` | Editar nivel, grado, sección, tipo o fecha de matrícula |
-| PATCH | `/api/matriculas/{id}/retirar` | Marcar la matrícula como retirada (ej. expulsión a mitad de año) |
-| PATCH | `/api/matriculas/{id}/trasladar` | Marcar la matrícula como trasladada |
+| POST | `/api/matriculas` | Matricular (estudiante nuevo/existente + un apoderado + datos académicos, todo en una transacción) |
+| GET | `/api/matriculas` | Listar (filtros: periodo, nivel, grado, estado) |
+| GET | `/api/matriculas/{id}` | Ver detalle completo (estudiante + apoderados) |
+| PUT | `/api/matriculas/{id}` | Editar nivel, grado, sección, tipo o fecha |
+| PATCH | `/api/matriculas/{id}/retirar` | Marcar como retirada |
+| PATCH | `/api/matriculas/{id}/trasladar` | Marcar como trasladada |
 
-## Todas las Historias de Usuario del proyecto
+### Módulo académico (soporte para Notas y Asistencia) — ADMIN, algunas también DOCENTE
+| Recurso | Endpoints |
+|---|---|
+| `/api/cursos` | CRUD completo (catálogo de materias) |
+| `/api/evaluaciones` | CRUD completo (catálogo: Examen, Práctica, etc.) |
+| `/api/aulas` | CRUD completo (periodo, nivel, grado, sección) |
+| `/api/aula-cursos` | `POST`, `GET ?aulaId=` — asigna un curso a una aula, con horas semanales |
+| `/api/docente-cursos` | `POST`, `GET ?usuarioId=`, `GET /mis-cursos`, `GET /por-aula-curso?aulaCursoId=` — asigna un docente a un curso-aula |
+| `/api/curso-evaluaciones` | CRUD completo — componentes de evaluación por curso-aula y bimestre, con `porcentaje` (valida que la suma no supere 100% por bimestre) |
 
-El proyecto completo tiene 12 historias de usuario, repartidas en 4 módulos.
+### Notas (HU-07 — completa)
+| Método | Ruta | Qué hace |
+|---|---|---|
+| POST | `/api/notas` | Registrar o corregir una nota (si ya existe para ese estudiante+componente, la actualiza en vez de duplicar) |
+| GET | `/api/notas/por-matricula?matriculaId=` | Notas de un estudiante |
+| GET | `/api/notas/por-componente?cursoEvaluacionId=` | Notas de todos en un componente |
+| GET | `/api/notas/consolidado?cursoEvaluacionId=` | **La vista clave**: lista TODOS los estudiantes matriculados en el aula de ese componente, tengan o no nota registrada — es lo que usa el frontend para que el docente vea a quién le falta calificar |
+
+### Asistencia (HU-10 — en construcción)
+| Método | Ruta | Qué hace |
+|---|---|---|
+| POST | `/api/clases` | Registrar una sesión de clase dictada (fecha, tema) |
+| GET | `/api/clases?aulaCursoId=` | Listar clases de un curso |
+| POST | `/api/asistencias` | Registrar o corregir la asistencia de un estudiante en una clase |
+| GET | `/api/asistencias/consolidado?claseId=` | Lista todos los matriculados de esa aula con su estado de asistencia (mismo patrón que el consolidado de notas) |
+
+## Todas las Historias de Usuario
 
 ### Módulo: Autenticación y accesos
-
-| HU | Descripción | Prioridad | Estado |
-|---|---|---|---|
-| HU-01 | Iniciar sesión con usuario y contraseña | Alta | ✅ Completa |
-| HU-02 | Recuperar contraseña en caso de olvido | Media | ✅ Completa |
-| HU-03 | Gestionar roles y permisos de los usuarios | Alta | ✅ Completa |
+| HU | Descripción | Estado |
+|---|---|---|
+| HU-01 | Iniciar sesión | ✅ Completa |
+| HU-02 | Recuperar contraseña | ✅ Completa |
+| HU-03 | Gestionar roles y permisos | ✅ Completa |
 
 ### Módulo: Matrícula
-
-| HU | Descripción | Prioridad | Estado |
-|---|---|---|---|
-| HU-04 | Registrar la matrícula de un nuevo estudiante | Alta | ✅ Completa |
-| HU-05 | Registrar los datos del apoderado del estudiante | Media | ✅ Completa |
-| HU-06 | Consultar y editar la información de matrícula | Media | ✅ Completa |
+| HU | Descripción | Estado |
+|---|---|---|
+| HU-04 | Registrar matrícula | ✅ Completa |
+| HU-05 | Registrar apoderado | ✅ Completa |
+| HU-06 | Consultar y editar matrícula | ✅ Completa |
 
 ### Módulo: Notas
-
-| HU | Descripción | Prioridad | Estado |
-|---|---|---|---|
-| HU-07 | Registrar notas de estudiantes por curso y periodo | Alta | ⏳ No iniciado |
-| HU-08 | Calcular automáticamente el promedio del estudiante | Alta | ⏳ No iniciado |
-| HU-09 | Consultar notas como padre de familia | Media | ⏳ No iniciado |
+| HU | Descripción | Estado |
+|---|---|---|
+| HU-07 | Registrar notas por curso y periodo | ✅ Completa |
+| HU-08 | Calcular automáticamente el promedio | ⏳ Pendiente |
+| HU-09 | Consultar notas como padre de familia | ⏳ Pendiente |
 
 ### Módulo: Asistencia
+| HU | Descripción | Estado |
+|---|---|---|
+| HU-10 | Registrar asistencia diaria | 🔶 Backend completo, frontend en construcción |
+| HU-11 | Reportes de inasistencias | ⏳ Pendiente |
+| HU-12 | Consultar asistencia como padre de familia | ⏳ Pendiente |
 
-| HU | Descripción | Prioridad | Estado |
-|---|---|---|---|
-| HU-10 | Registrar asistencia diaria de los estudiantes | Alta | ⏳ No iniciado |
-| HU-11 | Generar reportes de inasistencias | Media | ⏳ No iniciado |
-| HU-12 | Consultar asistencia como padre de familia | Baja | ⏳ No iniciado |
+## Arquitectura de software
 
-## Reglas de negocio que hay que tener presentes
+El sistema sigue una arquitectura **cliente-servidor desacoplada**: este backend expone una **API REST** que no sabe nada de cómo se ve la interfaz — cualquier cliente (el frontend Angular de este proyecto, el de otro integrante, una futura app móvil) puede consumirla de la misma forma, siempre que hable el mismo contrato JSON.
 
-- **Nadie puede autoasignarse el rol ADMIN** — ni al registrarse, ni cuando un admin aprueba a alguien pendiente. Es intencional, por seguridad.
-- **Nada se borra de verdad** — usuarios, roles, permisos, estudiantes y apoderados solo se "desactivan", nunca se eliminan de la base de datos.
-- **El código de un permiso y el nombre de un rol no se pueden cambiar** una vez creados (evita romper referencias). Los datos de estudiantes y apoderados sí son editables.
-- **El registro público crea automáticamente el registro académico correspondiente**: registrarse como `ESTUDIANTE` crea un `Estudiante` vinculado; como `APODERADO`, crea un `Apoderado` vinculado. Ambos quedan con `usuario_id` asociado, permitiendo a futuro que esa persona consulte su propia información (notas, asistencia).
-- **El campo `rolSolicitado`** queda guardado en el `Usuario` desde el registro, para que el admin sepa qué rol pidió la persona antes de aprobarla — sin necesidad de asignarlo automáticamente, aunque `aprobarUsuario` sí lo usa como default si no se especifica otro.
-- **Un estudiante no puede tener 2 matrículas activas en el mismo periodo** — si lo intentas, el sistema lo rechaza.
-- **Matricular exige al menos un apoderado** — no se puede dejar sin registrar. Es responsabilidad del frontend decidir cuántos pedir (el frontend propio de este proyecto pide solo 1, el que acompaña el trámite).
-- **La relación estudiante-apoderado es permanente**, no depende del periodo de matrícula — vive en `Estudiante`/`Apoderado`, no en `Matricula`. Si un apoderado ya estaba vinculado a un estudiante de una matrícula anterior, el sistema lo reutiliza automáticamente sin duplicar ni dar error.
-- **Los pagos (matrícula y pensiones) no están en este alcance todavía** — la idea a futuro es que se generen solos y queden "pendientes de pago", sin que alguien tenga que crearlos uno por uno a mano.
+**Patrón de capas** (dentro del backend): `Controller → Service → Repository → Entity`, con `DTO`s como frontera entre lo que entra/sale por HTTP y lo que vive en base de datos — nunca se expone una `Entity` de JPA directamente en una respuesta.
 
-## Cosas técnicas que vale la pena saber
+**Autenticación stateless con JWT**: el servidor no guarda sesiones. Cada petición trae su propio token, que un filtro (`JwtAuthFilter`) valida antes de llegar a cualquier controller protegido. Esto permite que el backend escale horizontalmente sin depender de memoria compartida entre instancias.
 
-- El proyecto crea las tablas automáticamente al arrancar, pero **no modifica** columnas que ya existen si cambias algo — si tocas una entidad ya usada en producción, puede requerir un ajuste manual en la base de datos.
-- Al validar el token JWT, el sistema a veces necesita traer datos relacionados (como el rol de un usuario) de una forma especial (`JOIN FETCH`) para evitar un error típico de Hibernate (`LazyInitializationException`).
-- Gmail exige una "contraseña de aplicación" especial, no tu contraseña normal, para poder enviar correos desde el sistema.
-- El archivo `.env` se carga solo, gracias a la librería `dotenv` — no hace falta configurar nada más en tu máquina.
-- A veces, durante desarrollo, Spring Boot DevTools puede confundirse después de muchos cambios seguidos y tirar errores raros (clases o configuraciones "no encontradas" que sí existen). Si pasa: detén la app por completo, borra la carpeta `target`, y reconstruye el proyecto antes de volver a ejecutar.
-- **`data.sql` y `ON CONFLICT DO NOTHING` solo protegen contra duplicados si la columna tiene una restricción `UNIQUE` real en la base de datos.** Si insertas datos de prueba en una tabla sin esa restricción (por ejemplo, en su momento pasó con `estudiante_apoderado` y con `matricula`), cada reinicio del backend vuelve a insertar las mismas filas, generando duplicados silenciosos que no dan error hasta que alguien nota los conteos raros. Por eso `data.sql` se mantiene mínimo: solo contiene inserts sobre columnas realmente únicas (`permiso.codigo`, `rol.nombre`, `usuario.username`). Cualquier dato de prueba adicional (estudiantes, matrículas, etc.) se crea navegando el sistema, no desde `data.sql`.
+**Autorización basada en roles y permisos (RBAC)**: cada endpoint declara con `@PreAuthorize` qué rol o permiso necesita, evaluado a partir de lo que ya viene codificado en el JWT (rol + lista de permisos), sin consultar la base de datos en cada request.
 
-## Despliegue en producción (Railway)
+**Persistencia**: PostgreSQL + Hibernate/JPA, con generación automática de esquema (`ddl-auto=update`) y un `data.sql` mínimo e idempotente para los datos que el sistema necesita desde el primer arranque.
 
-El backend ya está desplegado y funcionando en Railway. Configuración clave:
+**Topología de despliegue**: backend en Railway (con su base de datos PostgreSQL en el mismo proveedor); el frontend puede desplegarse de forma independiente en cualquier hosting de archivos estáticos (ej. Vercel), apuntando a la URL pública del backend vía variable de entorno.
 
-- El proyecto usa Java 21, que coincide con la versión que Railway instala por defecto — no fue necesario ningún ajuste adicional para que el build funcione
-- Swagger está deshabilitado en producción (`SWAGGER_ENABLED=false`)
-- Todas las variables de entorno de la tabla de arriba están configuradas directamente en el panel de Railway, con valores propios de producción (distintos a los de desarrollo, especialmente `JWT_SECRET`)
+## Arquitectura y estructura de paquetes
 
-## Frontend
+El backend sigue una arquitectura en capas clásica de Spring Boot:
 
-Existe un frontend Angular propio de este proyecto (`colegio-oss-frontend-v2`), independiente del desarrollado por otro integrante del equipo. Cubre completamente HU-01 a HU-06:
+```
+src/main/java/upc/colegioossbackend01/
+├── config/          → Seguridad, JPA Auditing, Mail, OpenAPI/Swagger
+├── controller/       → Reciben HTTP, delegan al service, no tienen lógica de negocio
+├── dto/
+│   ├── request/       → Lo que entra en cada endpoint
+│   └── response/       → Lo que se devuelve (nunca se expone la entity directamente)
+├── entity/           → Las clases JPA que representan las tablas
+├── enums/            → Tipos cerrados reutilizados entre entidades (Nivel, EstadoMatricula, etc.)
+├── exception/         → GlobalExceptionHandler + excepciones propias (BusinessException, ResourceNotFoundException)
+├── mapper/           → Convierten entity ↔ DTO
+├── repository/        → Interfaces de Spring Data JPA
+├── security/          → JwtService, JwtAuthFilter
+└── service/
+    ├── (interfaces)
+    └── impl/          → La lógica de negocio real vive aquí
+```
 
-- Login unificado (un solo formulario, el backend determina el rol)
-- Registro con selector de rol y documento
-- Recuperar / restablecer contraseña
-- Gestión de usuarios (listar, aprobar, cambiar rol, activar/desactivar/bloquear)
-- CRUD de Roles y Permisos, con asignación de permisos a roles
-- CRUD de Estudiantes y Apoderados, con gestión de la relación entre ambos
-- Matricular (flujo guiado de 3 pasos: estudiante, apoderado, datos académicos)
-- Consultar y editar matrículas (con filtros, retirar, trasladar)
+**Flujo típico de una petición**: `Controller` recibe el request → valida con Bean Validation (`@Valid`) → llama al `Service` → el `Service` aplica las reglas de negocio y usa el `Repository` para leer/escribir en BD → el `Mapper` convierte la `Entity` a `Response` → el `Controller` la envuelve en `ControllerResponse` y la devuelve.
 
-Construido con Angular 21 standalone components, señales (`signal`/`computed`), un componente de tabla reutilizable (búsqueda, orden, paginación, badges, responsive) y modales reutilizables (formulario genérico y selección).
+### Cómo se relacionan las entidades del módulo académico
+
+Esta parte no es evidente solo mirando la lista de endpoints, así que vale la pena un diagrama:
+
+```
+Curso (catálogo global, ej. "Matemática")
+  │
+  └──> AulaCurso (el curso SE DICTA en una Aula específica, con horas)
+          │
+          ├──> DocenteCurso (QUIÉN lo enseña — apunta a Usuario con rol DOCENTE, sin tabla Docente aparte)
+          │
+          ├──> CursoEvaluacion (QUÉ se evalúa: bimestre, tipo, % — para Notas)
+          │       └──> Nota (la calificación real de cada estudiante)
+          │
+          └──> Clase (sesión dictada en una fecha — para Asistencia)
+                  └──> Asistencia (el estado real de cada estudiante en esa clase)
+```
+
+`Aula` guarda `periodo` (Integer), `nivel` (mismo enum que usa `Matricula`) y `grado` (Integer) como campos simples — **no** como catálogos con tabla propia, para mantener consistencia con cómo ya se modeló `Matricula` (decisión tomada para no migrar código ya funcionando).
+
+Como no hay una FK directa entre `Matricula` y `Aula` (cada una guarda sus propios `periodo/nivel/grado/seccion`), los consolidados (de notas y de asistencia) resuelven "qué estudiantes están en esta aula" comparando esos 4 campos entre ambas tablas.
+
+## Reglas de negocio del módulo académico
+
+- **Un docente no tiene tabla propia** — es un `Usuario` con `rol = DOCENTE`. Cualquier relación que necesite "el docente de X" apunta directo a `usuario_id`.
+- **Registrar nota/asistencia es "crear o corregir"**: si ya existe un registro para esa combinación (estudiante + componente, o estudiante + clase), se actualiza en vez de duplicar — evita que un docente cree registros repetidos por error.
+- **La suma de porcentajes de `CursoEvaluacion`** para un mismo curso-aula-bimestre no puede superar 100% — se valida tanto al crear como al editar (excluyendo el propio registro que se edita).
+- **El "consolidado"** (de notas y de asistencia) no es una tabla que se guarda — es una consulta calculada en el momento, que combina "quién está matriculado ahora" con "qué se ha registrado hasta ahora". Nada se pre-genera al matricular.
 
 ## Pendientes conocidos
 
-- **No existe un endpoint ni pantalla para que un admin cree un `Usuario` directamente** — hoy la única vía es el registro público. Si se necesita crear cuentas de `ADMINISTRATIVO` o `DOCENTE` sin pasar por auto-registro, hay que construir `POST /api/usuarios` (backend) y su formulario correspondiente (frontend).
-- Módulo de Notas (HU-07, HU-08, HU-09) — no iniciado. Requiere definir entidades académicas nuevas (`Aula`, `Curso`, `AulaCurso`, `DocenteCurso`, `Evaluacion`, `CursoEvaluacion`, `Nota`).
-- Módulo de Asistencia (HU-10, HU-11, HU-12) — no iniciado. Requiere `Clase`, `Asistencia`.
-- Pruebas unitarias del módulo de Matrícula y de `UsuarioServiceImpl`/`RolServiceImpl`/`PermisoServiceImpl` — pendiente de ampliar cobertura (ver sección de pruebas).
+- No existe endpoint para que un admin cree cuentas `ESTUDIANTE`/`APODERADO` directamente — solo vía auto-registro (decisión consciente, ver historial de diseño)
+- No hay validación de duplicados entre "estudiante matriculado sin cuenta" y "estudiante que se auto-registra después" — caso borde identificado, no implementado (no lo pide ninguna HU)
+- HU-08, HU-09, HU-11, HU-12 — pendientes
+- Pruebas unitarias del módulo académico, Notas y Asistencia — pendientes (todo lo construido en esta fase se probó manualmente vía Swagger y frontend, no tiene tests automatizados todavía)
+
+## Notas técnicas relevantes
+
+- **`data.sql` se mantiene mínimo a propósito**: solo contiene inserts sobre columnas con restricción `UNIQUE` real (`permiso.codigo`, `rol.nombre`, `usuario.username`). En su momento, insertar datos de prueba en tablas sin esa restricción (`estudiante_apoderado`, `matricula`) causó duplicados masivos en cada reinicio del backend, porque `ON CONFLICT DO NOTHING` no tiene nada contra qué comparar sin una constraint única. La lección quedó aplicada también a las tablas nuevas del módulo académico: ninguna tiene datos semilla en `data.sql`, se crean todas navegando el sistema.
+- Relaciones `LAZY` con `JOIN FETCH` donde se necesita evitar `LazyInitializationException`.
+- Soft delete en todo — nada se borra físicamente.
+
+## Despliegue en producción (Railway)
+
+Backend desplegado y funcionando. Java 21 coincide con el default de Railpack, sin ajustes adicionales. Swagger deshabilitado en producción.
+
+## Frontend
+
+Existe un frontend Angular propio (`colegio-oss-frontend-v2`). Cubre HU-01 a HU-07 completas, más el módulo académico de administración (Cursos, Aulas, asignaciones). Ver README propio del frontend para más detalle.
 
 ## Pruebas automatizadas
 
@@ -267,27 +241,18 @@ Construido con Angular 21 standalone components, señales (`signal`/`computed`),
 mvn test
 ```
 
-**Cobertura actual — todos los módulos de Autenticación y Matrícula tienen pruebas unitarias:**
+Más de 100 pruebas unitarias en total. Los archivos más relevantes:
 
-| Archivo de test | Qué cubre |
-|---|---|
-| `AuthServiceImplTest` | Login, refresh, registro (incluyendo creación automática de Estudiante/Apoderado), recuperación de contraseña |
-| `PermisoServiceImplTest` | CRUD de permisos |
-| `RolServiceImplTest` | CRUD de roles, asignación de permisos |
-| `UsuarioServiceImplTest` | Listar, aprobar, cambiar rol, cambiar estado |
-| `EstudianteServiceImplTest` | CRUD de estudiantes |
-| `ApoderadoServiceImplTest` | CRUD de apoderados |
-| `EstudianteApoderadoServiceImplTest` | Asignar/quitar apoderados, marcar principal |
-| `MatricularServiceImplTest` | Flujo transaccional de matricular (HU-04) |
-| `MatriculaServiceImplTest` | Consultar y editar matrícula (HU-06) |
-| `AuthControllerIntegrationTest` | Pruebas de integración con H2 en memoria |
+- **`AuthServiceImplTest`** — login, refresh, registro (incluyendo la creación automática de Estudiante/Apoderado según el rol), recuperación de contraseña
+- **`MatricularServiceImplTest`** — el flujo transaccional completo de matricular (resolución de estudiante/apoderado nuevo o existente, validación de "una matrícula activa por periodo")
+- **`MatriculaServiceImplTest`** — consultar, editar, retirar y trasladar matrículas
+- **`UsuarioServiceImplTest`** — listar, aprobar pendientes, cambiar rol, cambiar estado
+- **`RolServiceImplTest`** / **`PermisoServiceImplTest`** — CRUD y asignación de permisos a roles
+- **`EstudianteServiceImplTest`** / **`ApoderadoServiceImplTest`** / **`EstudianteApoderadoServiceImplTest`** — CRUD y gestión de la relación entre ambos
+- **`AuthControllerIntegrationTest`** — pruebas de integración de extremo a extremo con H2 en memoria
 
-En total, más de 90 pruebas unitarias entre todos los servicios.
-
-**Lo que todavía no tiene pruebas (pendiente, para cuando se implementen):**
-- Módulo de Notas (HU-07, HU-08, HU-09)
-- Módulo de Asistencia (HU-10, HU-11, HU-12)
+El módulo académico, Notas y Asistencia todavía no tienen pruebas automatizadas — se probaron manualmente vía Swagger y el frontend.
 
 ## Antes de subir cambios a Git
 
-Revisa que `application.properties` no tenga ninguna contraseña real escrita, y que tu archivo `.env` nunca se suba (debe estar en `.gitignore`). Si alguna vez un secreto se llegó a subir por error, considéralo comprometido y genera uno nuevo — quitarlo del control de versiones no borra lo que ya quedó en el historial de Git.
+Revisa que `application.properties` no tenga contraseñas reales, y que `.env` esté en `.gitignore`.
